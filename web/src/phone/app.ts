@@ -8,6 +8,7 @@ import type { Me } from '../api.ts'
 import { tracker } from '../tracker.ts'
 import { $, esc, fmtDate, on, safeHref } from './dom.ts'
 import { reportHtml } from './report-view.ts'
+import { logo } from './logo.ts'
 
 const STAGES = ['understanding', 'searching', 'organising', 'checking', 'writing'] as const
 
@@ -22,7 +23,7 @@ function shell(active: string, content: string): string {
   const tab = (href: string, name: string, text: string) =>
     `<a href="${href}" class="${active === name ? 'active' : ''}">${text}</a>`
   return `
-    <header class="top"><a href="#/" class="brand"><span class="logo"></span>AskWise</a>
+    <header class="top"><a href="#/" class="brand">${logo(26)}AskWise</a>
       <nav class="nav">${tab('#/', 'ask', 'Ask')}${tab('#/history', 'history', 'History')}${tab('#/settings', 'settings', 'Settings')}</nav></header>
     <main id="view" class="view-enter">${content}</main>`
 }
@@ -35,7 +36,7 @@ function notice(text: string, kind: 'info' | 'warn' = 'info'): string {
 function renderSignIn(root: HTMLElement, message = ''): void {
   root.innerHTML = `
     <main class="signin stagger">
-      <span class="logo"></span>
+      <div class="signin-mark">${logo(56)}</div>
       <h1>Know what to choose.</h1>
       <p class="lead" style="margin-bottom:28px">AskWise reads the web for you, checks the sources and gives you a straight answer on your glasses.</p>
       <form id="signin">
@@ -108,7 +109,6 @@ function renderAsk(root: HTMLElement): void {
     'ask',
     `
     ${!me?.researchAvailable ? notice('Research is being set up. Please check back soon.', 'warn') : ''}
-    ${tracker.state.offline ? notice(MESSAGES.offline, 'warn') : ''}
     <div class="hero">
       <h1>What are you <span class="grad">deciding?</span></h1>
       <p class="lead">Name the options and what matters to you. AskWise checks the sources and sends the answer to your glasses.</p>
@@ -135,6 +135,9 @@ function renderAsk(root: HTMLElement): void {
       const useNotion = root.querySelector<HTMLInputElement>('#useNotion')?.checked ?? false
       const { job: started } = await api.ask(draftQuestion, useNotion, newRequestKey())
       draftQuestion = ''
+      $(root, '#askmsg').textContent = ''
+      ;(root.querySelector('#q') as HTMLTextAreaElement).value = ''
+      button.disabled = false
       tracker.follow(started)
     } catch (err) {
       $(root, '#askmsg').textContent = friendly(err)
@@ -223,12 +226,11 @@ async function renderSave(root: HTMLElement, id: string): Promise<void> {
         <p class="eyebrow">Exactly what goes into Notion</p>
         <div class="preview-body">${lines.replace(/(<li>.*?<\/li>)+/g, m => `<ul>${m}</ul>`)}</div>
       </section>
-      <section class="card">
-        <label class="check"><input type="checkbox" id="confirm" /> I've read it. Save this to Notion.</label>
-        <div class="row"><button id="approve" class="primary" disabled>Save to Notion</button>
-        <button id="reject" class="ghost">Don't save</button></div>
-        <p id="savemsg" role="status"></p>
-      </section>`
+      <p id="savemsg" role="status"></p>
+      <div class="savebar"><div class="inner approve">
+        <label class="check"><input type="checkbox" id="confirm" /> <span>I've read it</span></label>
+        <div class="row" style="margin:0"><button id="reject" class="ghost">Don't save</button><button id="approve" class="primary" disabled>Save</button></div>
+      </div></div>`
     const confirm = $(view, '#confirm') as HTMLInputElement
     const approve = $(view, '#approve') as HTMLButtonElement
     confirm.addEventListener('change', () => (approve.disabled = !confirm.checked))
@@ -428,8 +430,14 @@ export async function route(root: HTMLElement): Promise<void> {
 
 export function startPhone(root: HTMLElement): void {
   window.addEventListener('hashchange', () => void route(root))
+  const banner = document.createElement('div')
+  banner.className = 'offline-banner'
+  banner.setAttribute('role', 'status')
+  banner.textContent = MESSAGES.offline
+  document.body.appendChild(banner)
   let lastKey = ''
   tracker.subscribe(s => {
+    banner.classList.toggle('show', s.offline)
     // Only the ask page shows live progress; refresh it when the research state changes.
     const key = `${s.signedIn}:${s.job?.id}:${s.job?.status}:${s.job?.stage}:${s.offline}`
     if (key === lastKey) return
