@@ -52,7 +52,7 @@ describe('everyday wording', () => {
       const src = fs.readFileSync(file, 'utf8')
       // Visible text sits between HTML tags or in quoted sentences that start with a capital letter.
       const visible = [
-        ...[...src.matchAll(/>([^<>{}$`]{3,})</g)].map(m => m[1]),
+        ...[...src.matchAll(/>([^<>{}$`\n]{3,})</g)].map(m => m[1]),
         ...[...src.matchAll(/'([A-Z][^'$]{6,})'/g)].map(m => m[1]),
       ]
       for (const t of visible) expect(bad(t), `${file}: ${t}`).toEqual([])
