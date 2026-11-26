@@ -110,7 +110,7 @@ function productDetail(p: Product, report: Report): string {
     </div>`
 }
 
-export function reportHtml(job: JobView, report: Report): string {
+export function reportHtml(job: JobView, report: Report, canSave = true): string {
   const rec = report.recommendation
   const e = report.evidence
   const checks = report.claims.length + report.conflicts.length
@@ -180,6 +180,8 @@ export function reportHtml(job: JobView, report: Report): string {
     <div class="savebar"><div class="inner">${
       job.exported
         ? `<span class="small"><span class="saved-dot"></span>Saved to Notion</span><a class="button ghost" href="${safeHref(job.exported.url)}" target="_blank" rel="noopener">Open</a>`
-        : `<span class="small">Keep this report?</span><a class="button primary" href="#/save/${esc(job.id)}">Save to Notion</a>`
+        : canSave
+          ? `<span class="small">Keep this report?</span><a class="button primary" href="#/save/${esc(job.id)}">Save to Notion</a>`
+          : `<span class="small">Connect Notion to keep reports.</span><a class="button ghost" href="#/settings">Settings</a>`
     }</div></div>`
 }

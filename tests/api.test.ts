@@ -3,6 +3,7 @@ import { openDb } from '../server/db.ts'
 import type { Db } from '../server/db.ts'
 import { createApp, getSettings } from '../server/app.ts'
 import { createInvite } from '../server/auth.ts'
+import { SecretBox } from '../server/secret-box.ts'
 import { ResearchEngine } from '../server/research/engine.ts'
 import { NotionService } from '../server/notion/service.ts'
 import { ProviderError } from '../server/research/provider.ts'
@@ -13,6 +14,8 @@ import type { JobView } from '../shared/types.ts'
 const NOTES_PAGE = '11111111-1111-1111-1111-111111111111'
 const REPORTS_PAGE = '22222222-2222-2222-2222-222222222222'
 const PRIVATE_PAGE = '33333333-3333-3333-3333-333333333333'
+const SHARED_PAGE = '44444444-4444-4444-4444-444444444444'
+const VISITOR_PAGE = '55555555-5555-5555-5555-555555555555'
 const NOTION_TEST_TOKEN = 'ntn_testsecret0123456789'
 
 let db: Db
@@ -21,16 +24,22 @@ let notionServer: NotionFixtureServer
 let app: ReturnType<typeof createApp>
 let engine: ResearchEngine
 
-function setup(opts: { withProvider?: boolean; perHour?: number; timeLimitMs?: number } = {}) {
+function setup(opts: { withProvider?: boolean; perHour?: number; perDay?: number; timeLimitMs?: number; shared?: boolean } = {}) {
   db = openDb(':memory:')
   provider = new FixtureProvider()
   notionServer = new NotionFixtureServer()
-  const notion = new NotionService(db, NOTION_TEST_TOKEN, notionServer.fetch as typeof fetch)
+  const notion = new NotionService(db, {
+    serviceToken: NOTION_TEST_TOKEN,
+    shared: opts.shared === false ? null : { pageId: SHARED_PAGE, url: 'https://notion.example/shared' },
+    oauth: { clientId: 'fixture-client', clientSecret: 'fixture-client-secret', redirectUri: 'https://askwise.example/api/integrations/notion/callback' },
+    box: new SecretBox('fixture secret'),
+    fetchImpl: notionServer.fetch as typeof fetch,
+  })
   engine = new ResearchEngine(db, opts.withProvider === false ? null : provider, notion, {
     timeLimitMs: opts.timeLimitMs ?? 10_000,
     getSettings: id => getSettings(db, id),
   })
-  app = createApp({ db, engine, notion, sessionDays: 30, researchPerHour: opts.perHour ?? 20, maxActivePerUser: 2 })
+  app = createApp({ db, engine, notion, sessionDays: 30, researchPerHour: opts.perHour ?? 20, researchPerDay: opts.perDay ?? 500, maxActivePerUser: 2 })
 }
 
 async function call(method: string, path: string, token?: string, body?: unknown) {
@@ -43,8 +52,8 @@ async function call(method: string, path: string, token?: string, body?: unknown
   return { status: res.status, body: text ? JSON.parse(text) : {}, text }
 }
 
-async function signIn(): Promise<string> {
-  const code = createInvite(db)
+async function signIn(owner = false): Promise<string> {
+  const code = createInvite(db, 72, null, owner)
   const res = await call('POST', '/api/session', undefined, { code })
   expect(res.status).toBe(200)
   return res.body.token
@@ -261,21 +270,22 @@ describe('privacy between people', () => {
 
 describe('Notion', () => {
   it('connects and lists only pages shared with AskWise', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await call('POST', '/api/integrations/notion/connect', t)
     const pages = await call('GET', '/api/integrations/notion/pages', t)
-    expect(pages.body.pages.map((p: { title: string }) => p.title)).toEqual(['Fixture notes', 'Fixture reports'])
+    expect(pages.body.pages.map((p: { title: string }) => p.title)).toEqual(['Fixture notes', 'Fixture reports', 'AskWise shared reports'])
+    expect(pages.body.pages.map((p: { title: string }) => p.title)).not.toContain('Private diary')
   })
 
   it('refuses pages that were not shared', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await call('POST', '/api/integrations/notion/connect', t)
     const r = await call('PUT', '/api/integrations/notion/pages', t, { readPageId: PRIVATE_PAGE, destinationId: REPORTS_PAGE })
     expect(r.status).toBe(400)
   })
 
   it('reads only the chosen page, and treats its text as information', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const res = await call('POST', '/api/research', t, { question: 'Use notes', useNotion: true, requestKey: crypto.randomUUID() })
     const job = await waitFor(t, res.body.job.id, done)
@@ -289,14 +299,14 @@ describe('Notion', () => {
   })
 
   it('does not read Notion unless the person asks for it', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     await researched(t)
     expect(provider.lastNotes).toBeNull()
   })
 
   it('shows the exact content and destination before saving, and writes nothing yet', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const { body } = await call('POST', `/api/reports/${job.id}/export-preview`, t)
@@ -307,7 +317,7 @@ describe('Notion', () => {
   })
 
   it('creates the page only after approval, with the exact previewed content', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const { body } = await call('POST', `/api/reports/${job.id}/export-preview`, t)
@@ -322,7 +332,7 @@ describe('Notion', () => {
   })
 
   it('never creates a duplicate when approval is repeated', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const p1 = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
@@ -340,7 +350,7 @@ describe('Notion', () => {
   })
 
   it('writes nothing after the person chooses not to save', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
@@ -351,7 +361,7 @@ describe('Notion', () => {
   })
 
   it('refuses approval without an explicit yes, or for content that changed', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
@@ -365,7 +375,7 @@ describe('Notion', () => {
   })
 
   it('refuses to save to a destination other than the one reviewed', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
@@ -376,7 +386,7 @@ describe('Notion', () => {
   })
 
   it('stops further requests after access is revoked in Notion', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
@@ -391,18 +401,30 @@ describe('Notion', () => {
   })
 
   it('disconnects and then refuses Notion requests', async () => {
-    const t = await signIn()
+    setup({ shared: false })
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     await call('DELETE', '/api/integrations/notion', t)
     expect((await call('GET', '/api/me', t)).body.notion.connected).toBe(false)
     expect((await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.reason).toBe('not_connected')
   })
+
+  it('after disconnecting, only the public shared page is offered, clearly marked', async () => {
+    const t = await signIn(true)
+    await connectNotion(t)
+    const job = await researched(t)
+    await call('DELETE', '/api/integrations/notion', t)
+    const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
+    expect(p.shared).toBe(true)
+    expect(p.destination.id).toBe(SHARED_PAGE)
+    expect(notionServer.created).toHaveLength(0)
+  })
 })
 
 describe('secrets and logs', () => {
   it('never sends the Notion secret or other credentials to the phone', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
     const responses = [
@@ -416,12 +438,123 @@ describe('secrets and logs', () => {
   })
 
   it('keeps activity records free of credentials and private content', async () => {
-    const t = await signIn()
+    const t = await signIn(true)
     provider.failSearch = new ProviderError('upstream said Bearer abc.def and sk-live1234567890 ntn_abcdefghijk', false)
     await researched(t)
     const rows = db.prepare('SELECT event, detail FROM activity').all() as { event: string; detail: string | null }[]
     const all = JSON.stringify(rows)
     expect(all).not.toMatch(/sk-live|ntn_abc|abc\.def/)
     expect(rows.map(r => r.event)).toEqual(expect.arrayContaining(['sign_in', 'research_created', 'research_stopped']))
+  })
+})
+
+describe('instant access', () => {
+  it('opens a private space with no code', async () => {
+    const res = await call('POST', '/api/session/guest')
+    expect(res.status).toBe(200)
+    const me = await call('GET', '/api/me', res.body.token)
+    expect(me.status).toBe(200)
+    expect(me.body.isOwner).toBe(false)
+    const other = (await call('POST', '/api/session/guest')).body.token
+    const job = await researched(res.body.token)
+    expect((await call('GET', `/api/research/${job.id}`, other)).status).toBe(404)
+  })
+
+  it('caps the questions everyone can ask in a day', async () => {
+    setup({ perDay: 2 })
+    const a = (await call('POST', '/api/session/guest')).body.token
+    const b = (await call('POST', '/api/session/guest')).body.token
+    await researched(a, 'one')
+    await researched(b, 'two')
+    const third = await call('POST', '/api/research', a, { question: 'three', requestKey: crypto.randomUUID() })
+    expect(third.status).toBe(429)
+    expect(third.body.message).toBe('AskWise has answered a lot of questions today. Please come back tomorrow.')
+  })
+
+  it("never lets a visitor use the owner's Notion pages", async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    expect((await call('POST', '/api/integrations/notion/connect', guest)).body.reason).toBe('owner_only')
+    expect((await call('GET', '/api/integrations/notion/pages', guest)).status).toBe(409)
+    const res = await call('POST', '/api/research', guest, { question: 'Use my notes please', useNotion: true, requestKey: crypto.randomUUID() })
+    await waitFor(guest, res.body.job.id, done)
+    expect(provider.lastNotes).toBeNull()
+    expect(notionServer.requests.some(r => r.path.includes('/blocks/'))).toBe(false)
+  })
+
+  it('lets a visitor save to the shared page after approving, and says it is public', async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    const job = await researched(guest)
+    const p = (await call('POST', `/api/reports/${job.id}/export-preview`, guest)).body.preview
+    expect(p.shared).toBe(true)
+    expect(p.destination.id).toBe(SHARED_PAGE)
+    expect(p.privateInfo.join(' ')).toMatch(/Anyone with its link can read it/)
+    expect(notionServer.created).toHaveLength(0)
+    const r = await call('POST', `/api/reports/${job.id}/approve-export`, guest, { approved: true, previewId: p.previewId, contentHash: p.contentHash })
+    expect(r.status).toBe(200)
+    expect(notionServer.created).toHaveLength(1)
+    expect(notionServer.created[0].parentId).toBe(SHARED_PAGE)
+  })
+
+  it('refuses to save when there is no shared page and no connection', async () => {
+    setup({ shared: false })
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    const job = await researched(guest)
+    expect((await call('POST', `/api/reports/${job.id}/export-preview`, guest)).body.reason).toBe('not_connected')
+  })
+})
+
+describe('Connect Notion with Notion sign-in', () => {
+  async function connectVisitor(token: string) {
+    const { body } = await call('POST', '/api/integrations/notion/sign-in', token)
+    const url = new URL(body.url)
+    expect(url.origin + url.pathname).toBe('https://api.notion.com/v1/oauth/authorize')
+    expect(url.searchParams.get('client_id')).toBe('fixture-client')
+    const state = url.searchParams.get('state')!
+    const back = await app.request(`/api/integrations/notion/callback?code=good-code&state=${state}`)
+    return { state, back }
+  }
+
+  it("connects the visitor's own workspace without pasting anything", async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    const { back } = await connectVisitor(guest)
+    expect(back.status).toBe(302)
+    expect(back.headers.get('location')).toBe('/#/settings/notion-connected')
+    const me = (await call('GET', '/api/me', guest)).body
+    expect(me.notion).toMatchObject({ connected: true, workspaceName: 'Visitor workspace', mode: 'oauth' })
+    const pages = (await call('GET', '/api/integrations/notion/pages', guest)).body.pages
+    expect(pages.map((p: { title: string }) => p.title)).toEqual(['Visitor workspace page'])
+  })
+
+  it("uses the visitor's own token, never the owner's, and stores it encrypted", async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    await connectVisitor(guest)
+    await call('PUT', '/api/integrations/notion/pages', guest, { readPageId: VISITOR_PAGE, destinationId: VISITOR_PAGE })
+    const job = await researched(guest)
+    const p = (await call('POST', `/api/reports/${job.id}/export-preview`, guest)).body.preview
+    expect(p.shared).toBe(false)
+    await call('POST', `/api/reports/${job.id}/approve-export`, guest, { approved: true, previewId: p.previewId, contentHash: p.contentHash })
+    expect(notionServer.created[0].parentId).toBe(VISITOR_PAGE)
+    const writes = notionServer.requests.filter(r => r.method === 'POST' && r.path === '/v1/pages')
+    expect(writes.every(r => r.auth === `Bearer ${NotionFixtureServer.VISITOR_TOKEN}`)).toBe(true)
+    const stored = JSON.stringify(db.prepare('SELECT * FROM connections').all())
+    expect(stored).not.toContain(NotionFixtureServer.VISITOR_TOKEN)
+  })
+
+  it('rejects a sign-in return with an unknown or reused state', async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    const { state } = await connectVisitor(guest)
+    const reused = await app.request(`/api/integrations/notion/callback?code=good-code&state=${state}`)
+    expect(reused.headers.get('location')).toBe('/#/settings/notion-declined')
+    const forged = await app.request('/api/integrations/notion/callback?code=good-code&state=made-up')
+    expect(forged.headers.get('location')).toBe('/#/settings/notion-declined')
+  })
+
+  it('handles a declined sign-in calmly', async () => {
+    const guest = (await call('POST', '/api/session/guest')).body.token
+    const { body } = await call('POST', '/api/integrations/notion/sign-in', guest)
+    const state = new URL(body.url).searchParams.get('state')!
+    const back = await app.request(`/api/integrations/notion/callback?code=bad-code&state=${state}`)
+    expect(back.headers.get('location')).toBe('/#/settings/notion-declined')
+    expect((await call('GET', '/api/me', guest)).body.notion.connected).toBe(false)
   })
 })

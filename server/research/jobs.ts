@@ -51,6 +51,11 @@ export function countSince(db: Db, userId: string, sinceIso: string): number {
   return row.n
 }
 
+/** Research started by everyone since a moment in time; used for the daily limit. */
+export function countAllSince(db: Db, sinceIso: string): number {
+  return (db.prepare('SELECT COUNT(*) AS n FROM research_jobs WHERE created_at >= ?').get(sinceIso) as { n: number }).n
+}
+
 export function createJob(db: Db, userId: string, question: string, useNotion: boolean, requestKey: string | null): JobRow {
   const id = crypto.randomUUID()
   const t = now()

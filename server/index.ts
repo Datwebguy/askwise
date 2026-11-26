@@ -12,6 +12,7 @@ import { ResearchEngine } from './research/engine.ts'
 import { markInterrupted } from './research/jobs.ts'
 import { OpenAIResearchProvider } from './research/openai.ts'
 import { NotionService } from './notion/service.ts'
+import { loadSecret, SecretBox } from './secret-box.ts'
 
 const config = loadConfig()
 const db = openDb(path.join(config.dataDir, 'askwise.db'))
@@ -27,7 +28,12 @@ const provider = config.openaiApiKey
       plannerModel: config.plannerModel,
     })
   : null
-const notion = new NotionService(db, config.notionToken)
+const notion = new NotionService(db, {
+  serviceToken: config.notionToken,
+  shared: config.notionSharedPageId ? { pageId: config.notionSharedPageId, url: config.notionSharedPageUrl } : null,
+  oauth: config.notionOAuth,
+  box: new SecretBox(loadSecret(config.secret, config.dataDir)),
+})
 const engine = new ResearchEngine(db, provider, notion, {
   timeLimitMs: config.researchTimeLimitMs,
   getSettings: userId => getSettings(db, userId),
@@ -39,6 +45,7 @@ const app = createApp({
   notion,
   sessionDays: config.sessionDays,
   researchPerHour: config.researchPerHour,
+  researchPerDay: config.researchPerDay,
   maxActivePerUser: config.maxActivePerUser,
 })
 

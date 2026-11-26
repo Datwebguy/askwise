@@ -75,7 +75,8 @@ export const STRENGTH_LABELS = {
 export const MESSAGES = {
   retry: "Let's try that again.",
   offline: 'Reconnecting to AskWise…',
-  busy: 'AskWise is busy right now. Please try again in a moment.',
+  busy: "You've asked a lot this hour. Please try again a little later.",
+  dailyLimit: 'AskWise has answered a lot of questions today. Please come back tomorrow.',
   tooMany: 'You have a few questions running. Please wait for one to finish.',
   interrupted: 'This research was interrupted. Ask again to restart it.',
   researchStopped: "AskWise couldn't finish this research. Let's try that again.",

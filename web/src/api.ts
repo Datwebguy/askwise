@@ -66,7 +66,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   } catch {
     if (!res.ok) throw new Unreachable()
   }
-  if (res.status === 401 && path !== '/api/session') {
+  if (res.status === 401 && !path.startsWith('/api/session')) {
     // Only sign out if this request used the current session; an older request must not undo a new sign-in.
     if (getToken() === token) setToken(null)
     throw new AskWiseRefusal(MESSAGES.signInAgain, 401)
@@ -82,11 +82,16 @@ export interface Me {
   settings: Settings
   researchAvailable: boolean
   notionAvailable: boolean
+  notionSignIn: boolean
+  notionShared: { title: string; url: string | null } | null
+  isOwner: boolean
   notion: ConnectionView
 }
 
 export const api = {
   signIn: (code: string) => request<{ token: string }>('POST', '/api/session', { code }),
+  startInstantly: () => request<{ token: string }>('POST', '/api/session/guest'),
+  notionSignIn: () => request<{ url: string }>('POST', '/api/integrations/notion/sign-in'),
   deviceCode: () => request<{ code: string; minutes: number }>('POST', '/api/session/device-code'),
   signOut: () => request<{ ok: true }>('DELETE', '/api/session'),
   me: () => request<Me>('GET', '/api/me'),
