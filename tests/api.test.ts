@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { openDb } from '../server/db.ts'
+import { openDb, openPostgresPool } from '../server/db.ts'
+import type { PgPool } from '../server/db.ts'
+import pg from 'pg'
 import type { Db } from '../server/db.ts'
 import { createApp, getSettings } from '../server/app.ts'
 import { createInvite } from '../server/auth.ts'
@@ -24,8 +26,22 @@ let notionServer: NotionFixtureServer
 let app: ReturnType<typeof createApp>
 let engine: ResearchEngine
 
-function setup(opts: { withProvider?: boolean; perHour?: number; perDay?: number; timeLimitMs?: number; shared?: boolean } = {}) {
-  db = openDb(':memory:')
+// With TEST_DATABASE_URL set, every test runs against real Postgres, each in a fresh schema.
+const PG_URL = process.env.TEST_DATABASE_URL
+let schemaCount = 0
+
+async function freshDb(): Promise<Db> {
+  if (!PG_URL) return openDb(':memory:')
+  const name = `t${process.pid}_${++schemaCount}`
+  const admin = new pg.Pool({ connectionString: PG_URL })
+  await admin.query(`CREATE SCHEMA ${name}`)
+  await admin.end()
+  return openPostgresPool(new pg.Pool({ connectionString: PG_URL, options: `-c search_path=${name}`, max: 4 }) as unknown as PgPool)
+}
+
+async function setup(opts: { withProvider?: boolean; perHour?: number; perDay?: number; timeLimitMs?: number; shared?: boolean } = {}) {
+  if (db) await db.close().catch(() => undefined)
+  db = await freshDb()
   provider = new FixtureProvider()
   notionServer = new NotionFixtureServer()
   const notion = new NotionService(db, {
@@ -53,7 +69,7 @@ async function call(method: string, path: string, token?: string, body?: unknown
 }
 
 async function signIn(owner = false): Promise<string> {
-  const code = createInvite(db, 72, null, owner)
+  const code = await createInvite(db, 72, null, owner)
   const res = await call('POST', '/api/session', undefined, { code })
   expect(res.status).toBe(200)
   return res.body.token
@@ -82,11 +98,13 @@ async function connectNotion(token: string) {
   expect(r.status).toBe(200)
 }
 
-beforeEach(() => setup())
+beforeEach(async () => {
+  await setup()
+})
 
 describe('sign in and sessions', () => {
   it('turns a valid code into a session only once', async () => {
-    const code = createInvite(db)
+    const code = await createInvite(db)
     expect((await call('POST', '/api/session', undefined, { code })).status).toBe(200)
     expect((await call('POST', '/api/session', undefined, { code })).status).toBe(401)
   })
@@ -182,7 +200,7 @@ describe('research requests', () => {
   })
 
   it('stops research that runs past the time limit', async () => {
-    setup({ timeLimitMs: 100 })
+    await setup({ timeLimitMs: 100 })
     const t = await signIn()
     provider.searchDelayMs = 2000
     const job = await researched(t)
@@ -190,7 +208,7 @@ describe('research requests', () => {
   })
 
   it('stops research when the time limit passes between steps', async () => {
-    setup({ timeLimitMs: 150 })
+    await setup({ timeLimitMs: 150 })
     const t = await signIn()
     provider.structureDelayMs = 400
     const job = await researched(t)
@@ -220,7 +238,7 @@ describe('research requests', () => {
   })
 
   it('limits how much research one person can start', async () => {
-    setup({ perHour: 2 })
+    await setup({ perHour: 2 })
     const t = await signIn()
     await researched(t, 'one')
     await researched(t, 'two')
@@ -228,7 +246,7 @@ describe('research requests', () => {
   })
 
   it('refuses research politely when it is not set up', async () => {
-    setup({ withProvider: false })
+    await setup({ withProvider: false })
     const t = await signIn()
     const r = await call('POST', '/api/research', t, { question: 'anything', requestKey: crypto.randomUUID() })
     expect(r.status).toBe(503)
@@ -264,7 +282,7 @@ describe('privacy between people', () => {
     await researched(t)
     expect((await call('DELETE', '/api/me', t)).status).toBe(200)
     expect((await call('GET', '/api/me', t)).status).toBe(401)
-    expect((db.prepare('SELECT COUNT(*) AS n FROM research_jobs').get() as { n: number }).n).toBe(0)
+    expect((await db.get('SELECT COUNT(*) AS n FROM research_jobs') as { n: number }).n).toBe(0)
   })
 })
 
@@ -367,7 +385,8 @@ describe('Notion', () => {
     const p = (await call('POST', `/api/reports/${job.id}/export-preview`, t)).body.preview
     expect((await call('POST', `/api/reports/${job.id}/approve-export`, t, { previewId: p.previewId, contentHash: p.contentHash })).status).toBe(400)
     expect((await call('POST', `/api/reports/${job.id}/approve-export`, t, { approved: true, previewId: p.previewId, contentHash: 'different' })).status).toBe(409)
-    db.prepare(`UPDATE research_jobs SET report_json = json_set(report_json, '$.summary', 'Edited after review') WHERE id = ?`).run(job.id)
+    const stored = (await db.get<{ report_json: string }>('SELECT report_json FROM research_jobs WHERE id = ?', job.id))!
+    await db.run('UPDATE research_jobs SET report_json = ? WHERE id = ?', JSON.stringify({ ...JSON.parse(stored.report_json), summary: 'Edited after review' }), job.id)
     const changed = await call('POST', `/api/reports/${job.id}/approve-export`, t, { approved: true, previewId: p.previewId, contentHash: p.contentHash })
     expect(changed.status).toBe(409)
     expect(changed.body.reason).toBe('changed')
@@ -401,7 +420,7 @@ describe('Notion', () => {
   })
 
   it('disconnects and then refuses Notion requests', async () => {
-    setup({ shared: false })
+    await setup({ shared: false })
     const t = await signIn(true)
     await connectNotion(t)
     const job = await researched(t)
@@ -441,7 +460,7 @@ describe('secrets and logs', () => {
     const t = await signIn(true)
     provider.failSearch = new ProviderError('upstream said Bearer abc.def and sk-live1234567890 ntn_abcdefghijk', false)
     await researched(t)
-    const rows = db.prepare('SELECT event, detail FROM activity').all() as { event: string; detail: string | null }[]
+    const rows = await db.all('SELECT event, detail FROM activity') as { event: string; detail: string | null }[]
     const all = JSON.stringify(rows)
     expect(all).not.toMatch(/sk-live|ntn_abc|abc\.def/)
     expect(rows.map(r => r.event)).toEqual(expect.arrayContaining(['sign_in', 'research_created', 'research_stopped']))
@@ -461,7 +480,7 @@ describe('instant access', () => {
   })
 
   it('caps the questions everyone can ask in a day', async () => {
-    setup({ perDay: 2 })
+    await setup({ perDay: 2 })
     const a = (await call('POST', '/api/session/guest')).body.token
     const b = (await call('POST', '/api/session/guest')).body.token
     await researched(a, 'one')
@@ -496,7 +515,7 @@ describe('instant access', () => {
   })
 
   it('refuses to save when there is no shared page and no connection', async () => {
-    setup({ shared: false })
+    await setup({ shared: false })
     const guest = (await call('POST', '/api/session/guest')).body.token
     const job = await researched(guest)
     expect((await call('POST', `/api/reports/${job.id}/export-preview`, guest)).body.reason).toBe('not_connected')
@@ -536,7 +555,7 @@ describe('Connect Notion with Notion sign-in', () => {
     expect(notionServer.created[0].parentId).toBe(VISITOR_PAGE)
     const writes = notionServer.requests.filter(r => r.method === 'POST' && r.path === '/v1/pages')
     expect(writes.every(r => r.auth === `Bearer ${NotionFixtureServer.VISITOR_TOKEN}`)).toBe(true)
-    const stored = JSON.stringify(db.prepare('SELECT * FROM connections').all())
+    const stored = JSON.stringify(await db.all('SELECT * FROM connections'))
     expect(stored).not.toContain(NotionFixtureServer.VISITOR_TOKEN)
   })
 
