@@ -12,14 +12,14 @@ Done and proven (see docs/TEST_REPORT.md):
 - Notion: owner mode (service token, owner account via `npm run invite -- --owner`), shared public page for everyone ("AskWise shared reports", id 424669a3-d1fd-811f-ad46-f66d0c26cfd6), visitor OAuth "Connect Notion" (built + tested with fixtures; needs hosting + owner's public Notion connection).
 - 86 automated tests pass. Simulator full flow + 4 harder checks passed in the official simulator.
 
-In progress (committed, compiles, NOT yet tested end to end):
+Done and proven in the simulator (see TEST_REPORT "Voice"):
 - Voice input. Hold touchpad -> listening -> release -> `POST /api/voice` (WAV) -> OpenAI transcription (gpt-4o-mini-transcribe) -> draft on glasses -> tap sends, double-tap discards.
   Files: server/voice/transcribe.ts, server/app.ts (/api/voice), web/src/glasses/voice.ts, web/src/glasses/controller.ts, screens.ts (voice screens), app.json (g2-microphone).
   Rule 8: voice must not be mentioned in README/UI claims until proven end to end. Glasses hints already say "Hold: speak" -> remove if it cannot be proven.
 
 ## Next steps, in order
-1. Tests for voice: /api/voice with a fixture transcriber, isShortWav, pcmToWav, voice screens fit (glasses.test.ts pattern).
-2. Prove voice in the simulator with a virtual microphone (this worked in session 1):
+1. (Done) Voice tests: tests/voice.test.ts.
+2. (Done) Voice proven in the simulator with a virtual microphone. To repeat: start the simulator with `--aid alsa:pulse`, then `node scripts/simulator-voice.mjs <outDir> <token> <question.wav>` (set DISCARD=1 to test discarding):
    - `apt-get install -y pulseaudio pulseaudio-utils sox xvfb xdotool ffmpeg libwebkit2gtk-4.1-0`
    - `pulseaudio -D --exit-idle-time=-1`; `pactl load-module module-null-sink sink_name=askwise_voice`; `pactl load-module module-remap-source master=askwise_voice.monitor source_name=askwise_mic`; `pactl set-default-source askwise_mic`
    - Spoken question: ElevenLabs is connected through the proxy (no key needed): `POST https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL?output_format=pcm_16000`. Verified OpenAI transcribes it word for word.

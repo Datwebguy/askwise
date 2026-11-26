@@ -115,7 +115,6 @@ Run on November 26, 2026 with `scripts/simulator-run.mjs` in the official simula
 - The cheap research model sometimes names the same spec differently for each product, which leaves gaps ("—") in the comparison table.
 - Research takes 60 to 120 seconds with the low-cost model.
 - The service runs in this build environment only; it is not hosted anywhere public yet.
-- Voice input is not built.
 - The demo video has no narration.
 
 ## Simulator checks run (scripts/simulator-checks.mjs, Nov 26, 2026)
@@ -126,3 +125,18 @@ Run on November 26, 2026 with `scripts/simulator-run.mjs` in the official simula
 17:04:15 PASS Research finished while the app was closed
 17:04:45 PASS Connection comes back on its own
 ```
+
+## Voice (Nov 26, 2026, official simulator with a virtual microphone)
+
+A real spoken question (generated with ElevenLabs) was played into the simulator's microphone with `scripts/simulator-voice.mjs`.
+
+| Test | Expected | Actual | Result |
+|---|---|---|---|
+| Hold to listen | "One moment" until sound arrives, then "Listening" | As expected | Pass |
+| Speech to text | The exact question | "Compare the Sony WH-1000XM6 and the Bose QuietComfort Ultra headphones for travel and battery life." | Pass |
+| Draft before sending | Draft shown; nothing researched yet | As expected | Pass |
+| Tap sends | Research starts and finishes | READY in about 60 seconds | Pass |
+| Double-tap discards | No research started | "PASS discarded draft started no research" | Pass |
+| Automated | Audio packing, limits, kind messages, no technical details | voice.test.ts, 9 tests | Pass |
+
+Found and fixed: the microphone needs about a second to start, which clipped the first word ("Pair" instead of "Compare"). The glasses now show "Listening" only once sound is arriving.

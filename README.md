@@ -21,7 +21,7 @@ People who make decisions on the move: shoppers comparing products, students cho
 
 Open AskWise and start. There is nothing to sign up for and nothing to paste: each device gets its own private space automatically.
 
-1. **Ask** on your phone: name your options and what matters to you.
+1. **Ask** by voice on your glasses (hold the touchpad and speak) or type on your phone: name your options and what matters to you.
 2. **AskWise researches.** It searches the web, reads official pages, reviews and shops, and compares what it finds.
 3. **It checks.** Every important fact is matched to the page it came from. Facts without a source are never shown as confirmed.
 4. **Your glasses show the answer**: the best pick, the reason, the main drawback, how strong the evidence is and when prices were checked.
@@ -43,6 +43,12 @@ Short screens built for a 576 × 288 display. Tap to move forward, swipe up to g
 | Save | A reminder to review and approve on the phone |
 
 <p align="center"><img src="media/glasses-screens.png" alt="AskWise glasses screens" width="900"></p>
+
+## Ask by voice
+
+Hold the touchpad and speak. When you let go, your question appears on the lens as a draft. Tap to ask, or double-tap to throw it away. AskWise only listens while you hold the touchpad, and nothing is researched until you tap.
+
+<p align="center"><img src="media/voice-screens.png" alt="Asking AskWise by voice on the glasses" width="760"></p>
 
 ## What appears on the phone
 
@@ -115,7 +121,8 @@ Phone page  ─┘   (Even Hub SDK)     (Node, SQLite) └─ Notion
 ## Privacy and security
 
 - No account or personal details are needed. Each device has its own private space.
-- Your questions are sent for research only when you press Research.
+- Your questions are sent for research only when you press Research or tap a voice draft.
+- The microphone is used only while you hold the touchpad. Recordings are turned into text and not kept.
 - Notion pages are read only if you choose one, and only that page.
 - Nothing is saved to Notion until you approve the exact content.
 - API keys live only on the AskWise service. The glasses and phone never see them.
@@ -156,6 +163,7 @@ Open http://localhost:8787 and ask. To use the service's own Notion connection f
 | `PORT` | Port for the app (default 8787) |
 | `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
 | `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-nano`) |
+| `ASKWISE_TRANSCRIBE_MODEL` | Model that turns speech into text (default `gpt-4o-mini-transcribe`) |
 | `ASKWISE_DATA_DIR` | Where AskWise keeps its database (default `./data`) |
 
 Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
@@ -201,7 +209,7 @@ npm run pack
 npm test
 ```
 
-The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs` and `scripts/simulator-checks.mjs` drive the full flow and the harder moments in the official simulator.
+The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs`, `scripts/simulator-checks.mjs` and `scripts/simulator-voice.mjs` drive the full flow, the harder moments and voice questions in the official simulator.
 
 ## Demo
 
