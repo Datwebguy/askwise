@@ -7,7 +7,7 @@ import type { Tracker, TrackerState } from '../tracker.ts'
 import { api, newRequestKey } from '../api.ts'
 import { MESSAGES } from '../../../shared/labels.ts'
 import { GlassesDisplay, paginateBody } from './display.ts'
-import { draftScreen, listeningScreen, viewFor, voiceProblemScreen, writingScreen } from './screens.ts'
+import { draftScreen, gettingReadyScreen, listeningScreen, viewFor, voiceProblemScreen, writingScreen } from './screens.ts'
 import type { GlassesView, Screen } from './screens.ts'
 import { VoiceCapture } from './voice.ts'
 import { ACTIVE_STATUSES } from '../../../shared/types.ts'
@@ -25,7 +25,7 @@ export function pagesOf(view: GlassesView, paginate: (t: string) => string[] = p
 
 type Voice =
   | { step: 'off' }
-  | { step: 'listening'; capture: VoiceCapture }
+  | { step: 'listening'; capture: VoiceCapture; ready: boolean }
   | { step: 'writing' }
   | { step: 'draft'; text: string }
   | { step: 'sending'; text: string }
@@ -67,7 +67,9 @@ export class GlassesController {
     const v = this.voice
     const screen =
       v.step === 'listening'
-        ? listeningScreen()
+        ? v.ready
+          ? listeningScreen()
+          : gettingReadyScreen()
         : v.step === 'writing' || v.step === 'sending'
           ? writingScreen()
           : v.step === 'draft'
@@ -87,7 +89,7 @@ export class GlassesController {
   // ---- Voice ---------------------------------------------------------
   private async startListening(): Promise<void> {
     if (!this.tracker.state.signedIn || this.voice.step === 'listening' || this.voice.step === 'writing' || this.voice.step === 'sending') return
-    this.setVoice({ step: 'listening', capture: new VoiceCapture() })
+    this.setVoice({ step: 'listening', capture: new VoiceCapture(), ready: false })
     const ok = await this.bridge.audioControl(true).catch(() => false)
     if (!ok && (this.voice as Voice).step === 'listening') this.setVoice({ step: 'problem', message: "The microphone isn't available right now." })
   }
@@ -153,7 +155,14 @@ export class GlassesController {
     this.tracker.subscribe(s => this.render(s))
     const unsubscribe = this.bridge.onEvenHubEvent(event => {
       const pcm = event.audioEvent?.audioPcm
-      if (pcm && this.voice.step === 'listening') this.voice.capture.push(pcm)
+      if (pcm && this.voice.step === 'listening') {
+        this.voice.capture.push(pcm)
+        // Say "Listening" only once sound is really arriving, so people know when to start talking.
+        if (!this.voice.ready) {
+          this.voice.ready = true
+          this.renderVoice()
+        }
+      }
 
       const sys = eventTypeOf(event.sysEvent)
       const text = eventTypeOf(event.textEvent)

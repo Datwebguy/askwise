@@ -209,7 +209,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const audio = new Uint8Array(await c.req.arrayBuffer())
     if (!isShortWav(audio)) return c.json({ message: "I didn't catch that. Hold and try again." }, 400)
     try {
-      const text = await deps.transcriber.transcribe(audio, AbortSignal.timeout(30_000))
+      const text = (await deps.transcriber.transcribe(audio, AbortSignal.timeout(30_000))).replace(/\s+/g, ' ').trim()
       if (text.length < 3) return c.json({ message: "I didn't catch that. Hold and try again." }, 422)
       return c.json({ text: text.slice(0, 1000) })
     } catch (e) {

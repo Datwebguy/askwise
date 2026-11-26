@@ -133,8 +133,12 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : `${s.slice(0, n - 1)}…`
 }
 
+export function gettingReadyScreen(): Screen {
+  return { title: 'One moment', body: 'Getting ready to listen…', footer: 'Keep holding' }
+}
+
 export function listeningScreen(): Screen {
-  return { title: 'Listening', body: 'Ask your question.\n\nFor example: compare two phones for battery life under 800 dollars.', footer: HINT_LISTEN }
+  return { title: 'Listening', body: 'Ask your question now.\n\nFor example: compare two phones for battery life under 800 dollars.', footer: HINT_LISTEN }
 }
 
 export function writingScreen(): Screen {
