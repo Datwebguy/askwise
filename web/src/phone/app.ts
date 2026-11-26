@@ -445,7 +445,9 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
 }
 
 // ---- Router ------------------------------------------------------------
-let linkSignIn: Promise<string | null> | null = null
+/** A sign-in from another device's code that is still in progress; resolves to a problem message, if any. */
+type PendingSignIn = Promise<string | null>
+let linkSignIn: PendingSignIn | null = null
 
 export async function route(root: HTMLElement): Promise<void> {
   const link = location.hash.match(/^#\/code\/([A-Za-z0-9-]{6,40})$/)
