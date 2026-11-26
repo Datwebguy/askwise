@@ -14,6 +14,8 @@ import { NotionRefused } from './notion/service.ts'
 import type { NotionRefusal, NotionService } from './notion/service.ts'
 import { NotionError } from './notion/client.ts'
 import { AttemptLimiter } from './limits.ts'
+import { isShortWav, TranscribeError } from './voice/transcribe.ts'
+import type { Transcriber } from './voice/transcribe.ts'
 
 export interface AppDeps {
   db: Db
@@ -23,6 +25,7 @@ export interface AppDeps {
   researchPerHour: number
   researchPerDay: number
   maxActivePerUser: number
+  transcriber?: Transcriber | null
 }
 
 type Env = { Variables: { userId: string; token: string } }
@@ -53,7 +56,10 @@ export function createApp(deps: AppDeps): Hono<Env> {
   const clientKey = (c: Context) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
 
   app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: undefined }))
-  app.use('/api/*', bodyLimit({ maxSize: 32 * 1024, onError: c => c.json({ message: MESSAGES.checkInput }, 413) }))
+  const smallBodies = bodyLimit({ maxSize: 32 * 1024, onError: c => c.json({ message: MESSAGES.checkInput }, 413) })
+  const voiceBodies = bodyLimit({ maxSize: 1024 * 1024, onError: c => c.json({ message: 'That was a bit long. Please keep it under 15 seconds.' }, 413) })
+  app.use('/api/*', (c, next) => (c.req.path === '/api/voice' ? voiceBodies(c, next) : smallBodies(c, next)))
+  const voiceLimiter = new AttemptLimiter(40, 60 * 60_000)
 
   app.onError((err, c) => {
     if (err instanceof NotionRefused) {
@@ -140,6 +146,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       researchAvailable: engine.available,
       notionAvailable: notion.configured,
       notionSignIn: notion.oauthAvailable,
+      voiceAvailable: !!deps.transcriber,
       notionShared: notion.sharedPage,
       isOwner: isOwner(db, userId),
       notion: notion.view(userId),
@@ -193,6 +200,22 @@ export function createApp(deps: AppDeps): Hono<Env> {
     record(db, userId, 'research_created')
     void engine.start(row.id)
     return c.json({ job: jobs.toView(jobs.getJobRow(db, row.id)!, null) }, 201)
+  })
+
+  /** Turns a short spoken question from the glasses into text. Nothing is researched until the person confirms it. */
+  app.post('/api/voice', async c => {
+    if (!deps.transcriber) return c.json({ message: 'Voice is being set up.' }, 503)
+    if (!voiceLimiter.allow(c.get('userId'))) return c.json({ message: MESSAGES.busy }, 429)
+    const audio = new Uint8Array(await c.req.arrayBuffer())
+    if (!isShortWav(audio)) return c.json({ message: "I didn't catch that. Hold and try again." }, 400)
+    try {
+      const text = await deps.transcriber.transcribe(audio, AbortSignal.timeout(30_000))
+      if (text.length < 3) return c.json({ message: "I didn't catch that. Hold and try again." }, 422)
+      return c.json({ text: text.slice(0, 1000) })
+    } catch (e) {
+      log(`voice: ${e instanceof TranscribeError ? e.message : (e as Error).message}`)
+      return c.json({ message: MESSAGES.retry }, 502)
+    }
   })
 
   app.get('/api/research', c => {

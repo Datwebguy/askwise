@@ -13,6 +13,7 @@ import { markInterrupted } from './research/jobs.ts'
 import { OpenAIResearchProvider } from './research/openai.ts'
 import { NotionService } from './notion/service.ts'
 import { loadSecret, SecretBox } from './secret-box.ts'
+import { OpenAITranscriber } from './voice/transcribe.ts'
 
 const config = loadConfig()
 const db = openDb(path.join(config.dataDir, 'askwise.db'))
@@ -46,6 +47,7 @@ const app = createApp({
   sessionDays: config.sessionDays,
   researchPerHour: config.researchPerHour,
   researchPerDay: config.researchPerDay,
+  transcriber: config.openaiApiKey ? new OpenAITranscriber(config.openaiApiKey, config.transcribeModel) : null,
   maxActivePerUser: config.maxActivePerUser,
 })
 

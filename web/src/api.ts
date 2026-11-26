@@ -47,15 +47,16 @@ export function onSessionChange(fn: (token: string | null) => void): () => void 
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = getToken()
+  const audio = body instanceof Uint8Array
   let res: Response
   try {
     res = await fetch(path, {
       method,
       headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(audio ? { 'Content-Type': 'audio/wav' } : body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : audio ? new Blob([new Uint8Array(body)], { type: 'audio/wav' }) : JSON.stringify(body),
     })
   } catch {
     throw new Unreachable()
@@ -83,6 +84,7 @@ export interface Me {
   researchAvailable: boolean
   notionAvailable: boolean
   notionSignIn: boolean
+  voiceAvailable: boolean
   notionShared: { title: string; url: string | null } | null
   isOwner: boolean
   notion: ConnectionView
@@ -90,6 +92,7 @@ export interface Me {
 
 export const api = {
   signIn: (code: string) => request<{ token: string }>('POST', '/api/session', { code }),
+  transcribe: (wav: Uint8Array) => request<{ text: string }>('POST', '/api/voice', wav),
   startInstantly: () => request<{ token: string }>('POST', '/api/session/guest'),
   notionSignIn: () => request<{ url: string }>('POST', '/api/integrations/notion/sign-in'),
   deviceCode: () => request<{ code: string; minutes: number }>('POST', '/api/session/device-code'),
