@@ -17,7 +17,7 @@ const silence = (seconds: number) => new Uint8Array(Math.round(seconds * SAMPLE_
 function appWith(transcriber: Transcriber | null) {
   const db = openDb(':memory:')
   const notion = new NotionService(db, { serviceToken: null, shared: null, oauth: null, box: new SecretBox('t') })
-  const engine = new ResearchEngine(db, null, null, { timeLimitMs: 1000, getSettings: () => ({ country: null, currency: null }) })
+  const engine = new ResearchEngine(db, null, null, { timeLimitMs: 1000, getSettings: async () => ({ country: null, currency: null }) })
   return createApp({ db, engine, notion, sessionDays: 1, researchPerHour: 10, researchPerDay: 10, maxActivePerUser: 1, transcriber })
 }
 

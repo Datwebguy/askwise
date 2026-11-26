@@ -26,6 +26,8 @@ export interface AppDeps {
   researchPerDay: number
   maxActivePerUser: number
   transcriber?: Transcriber | null
+  /** Keeps background work alive after the reply is sent (needed on serverless hosts). */
+  background?: (work: Promise<unknown>) => void
 }
 
 type Env = { Variables: { userId: string; token: string } }
@@ -50,6 +52,7 @@ const CURRENCY_RE = /^[A-Z]{3}$/
 
 export function createApp(deps: AppDeps): Hono<Env> {
   const { db, engine, notion } = deps
+  const background = deps.background ?? ((work: Promise<unknown>) => void work.catch(() => undefined))
   const app = new Hono<Env>()
   const signInLimiter = new AttemptLimiter(10, 15 * 60_000)
   const guestLimiter = new AttemptLimiter(30, 60 * 60_000)
@@ -76,9 +79,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
 
   // ---- Session -------------------------------------------------------
   /** Opens AskWise instantly: a new private space for this device, with no code or details to enter. */
-  app.post('/api/session/guest', c => {
+  app.post('/api/session/guest', async c => {
     if (!guestLimiter.allow(clientKey(c))) return c.json({ message: 'Too many new visits from here. Please wait a little.' }, 429)
-    const session = createGuest(db, deps.sessionDays)
+    const session = await createGuest(db, deps.sessionDays)
     record(db, session.userId, 'sign_in', 'instant')
     return c.json({ token: session.token, expiresAt: session.expiresAt })
   })
@@ -103,7 +106,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const body = await readJson(c)
     const code = typeof body.code === 'string' ? body.code : ''
     if (code.length < 6 || code.length > 40) return c.json({ message: 'Please enter your sign-in code.' }, 400)
-    const session = redeemInvite(db, code, deps.sessionDays)
+    const session = await redeemInvite(db, code, deps.sessionDays)
     if (!session) {
       record(db, null, 'sign_in_refused')
       return c.json({ message: "That code didn't work. Please check it and try again." }, 401)
@@ -117,7 +120,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (c.req.method === 'GET' && c.req.path === '/api/integrations/notion/callback') return next()
     const auth = c.req.header('authorization') ?? ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-    const userId = userForToken(db, token)
+    const userId = await userForToken(db, token)
     if (!userId) {
       record(db, null, 'access_refused', c.req.path.split('/').slice(0, 3).join('/'))
       return c.json({ message: MESSAGES.signInAgain }, 401)
@@ -127,29 +130,29 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return next()
   })
 
-  app.delete('/api/session', c => {
-    endSession(db, c.get('token'))
+  app.delete('/api/session', async c => {
+    await endSession(db, c.get('token'))
     return c.json({ ok: true })
   })
 
   /** A short-lived, one-time code that signs the same person in on another device. */
-  app.post('/api/session/device-code', c => {
-    const code = createInvite(db, 0.25, c.get('userId'))
+  app.post('/api/session/device-code', async c => {
+    const code = await createInvite(db, 0.25, c.get('userId'))
     return c.json({ code, minutes: 15 })
   })
 
   // ---- Account and settings ------------------------------------------
-  app.get('/api/me', c => {
+  app.get('/api/me', async c => {
     const userId = c.get('userId')
     return c.json({
-      settings: getSettings(db, userId),
+      settings: await getSettings(db, userId),
       researchAvailable: engine.available,
       notionAvailable: notion.configured,
       notionSignIn: notion.oauthAvailable,
       voiceAvailable: !!deps.transcriber,
       notionShared: notion.sharedPage,
-      isOwner: isOwner(db, userId),
-      notion: notion.view(userId),
+      isOwner: await isOwner(db, userId),
+      notion: await notion.view(userId),
     })
   })
 
@@ -160,16 +163,16 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if ((country !== null && !COUNTRY_RE.test(country)) || (currency !== null && !CURRENCY_RE.test(currency))) {
       return c.json({ message: MESSAGES.checkInput }, 400)
     }
-    db.prepare('UPDATE users SET country = ?, currency = ? WHERE id = ?').run(country, currency, c.get('userId'))
-    return c.json({ settings: getSettings(db, c.get('userId')) })
+    await db.run('UPDATE users SET country = ?, currency = ? WHERE id = ?', country, currency, c.get('userId'))
+    return c.json({ settings: await getSettings(db, c.get('userId')) })
   })
 
   /** Deletes the person's research, saved exports, connections and account. */
-  app.delete('/api/me', c => {
+  app.delete('/api/me', async c => {
     const userId = c.get('userId')
-    for (const row of jobs.listJobs(db, userId, 1000)) engine.cancel(row.id)
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId)
-    db.prepare('UPDATE activity SET user_id = NULL, detail = NULL WHERE user_id = ?').run(userId)
+    for (const row of await jobs.listJobs(db, userId, 1000)) engine.cancel(row.id)
+    await db.run('DELETE FROM users WHERE id = ?', userId)
+    await db.run('UPDATE activity SET user_id = NULL, detail = NULL WHERE user_id = ?', userId)
     record(db, null, 'data_deleted')
     return c.json({ ok: true })
   })
@@ -184,22 +187,22 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (question.length < 3 || question.length > 1000) return c.json({ message: 'Please type a question.' }, 400)
 
     if (requestKey) {
-      const existing = jobs.findByRequestKey(db, userId, requestKey)
-      if (existing) return c.json({ job: jobs.toView(existing, notion.exportedInfo(existing.id)), repeated: true })
+      const existing = await jobs.findByRequestKey(db, userId, requestKey)
+      if (existing) return c.json({ job: jobs.toView(existing, await notion.exportedInfo(existing.id)), repeated: true })
     }
-    const same = jobs.findActiveSameQuestion(db, userId, question)
+    const same = await jobs.findActiveSameQuestion(db, userId, question)
     if (same) return c.json({ job: jobs.toView(same, null), repeated: true })
-    if (jobs.countActive(db, userId) >= deps.maxActivePerUser) return c.json({ message: MESSAGES.tooMany }, 429)
+    if (await jobs.countActive(db, userId) >= deps.maxActivePerUser) return c.json({ message: MESSAGES.tooMany }, 429)
     const hourAgo = new Date(Date.now() - 3600_000).toISOString()
-    if (jobs.countSince(db, userId, hourAgo) >= deps.researchPerHour) return c.json({ message: MESSAGES.busy }, 429)
+    if (await jobs.countSince(db, userId, hourAgo) >= deps.researchPerHour) return c.json({ message: MESSAGES.busy }, 429)
     const dayStart = new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()
-    if (jobs.countAllSince(db, dayStart) >= deps.researchPerDay) return c.json({ message: MESSAGES.dailyLimit }, 429)
+    if (await jobs.countAllSince(db, dayStart) >= deps.researchPerDay) return c.json({ message: MESSAGES.dailyLimit }, 429)
 
-    const useNotion = body.useNotion === true && notion.view(userId).readPage !== null
-    const row = jobs.createJob(db, userId, question, useNotion, requestKey)
+    const useNotion = body.useNotion === true && (await notion.view(userId)).readPage !== null
+    const row = await jobs.createJob(db, userId, question, useNotion, requestKey)
     record(db, userId, 'research_created')
-    void engine.start(row.id)
-    return c.json({ job: jobs.toView(jobs.getJobRow(db, row.id)!, null) }, 201)
+    background(engine.start(row.id))
+    return c.json({ job: jobs.toView((await jobs.getJobRow(db, row.id))!, null) }, 201)
   })
 
   /** Turns a short spoken question from the glasses into text. Nothing is researched until the person confirms it. */
@@ -218,31 +221,31 @@ export function createApp(deps: AppDeps): Hono<Env> {
     }
   })
 
-  app.get('/api/research', c => {
-    const rows = jobs.listJobs(db, c.get('userId'))
-    return c.json({ jobs: rows.map(r => jobs.toView(r, notion.exportedInfo(r.id))) })
+  app.get('/api/research', async c => {
+    const rows = await jobs.listJobs(db, c.get('userId'))
+    return c.json({ jobs: await Promise.all(rows.map(async r => jobs.toView(r, await notion.exportedInfo(r.id)))) })
   })
 
-  app.get('/api/research/latest', c => {
-    const row = jobs.listJobs(db, c.get('userId'), 1)[0]
-    return c.json({ job: row ? jobs.toView(row, notion.exportedInfo(row.id)) : null })
+  app.get('/api/research/latest', async c => {
+    const row = (await jobs.listJobs(db, c.get('userId'), 1))[0]
+    return c.json({ job: row ? jobs.toView(row, await notion.exportedInfo(row.id)) : null })
   })
 
-  app.get('/api/research/:id', c => {
-    const row = jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
+  app.get('/api/research/:id', async c => {
+    const row = await jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
     if (!row) return c.json({ message: MESSAGES.notFound }, 404)
-    return c.json({ job: jobs.toView(row, notion.exportedInfo(row.id)) })
+    return c.json({ job: jobs.toView(row, await notion.exportedInfo(row.id)) })
   })
 
-  app.get('/api/research/:id/report', c => {
-    const row = jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
+  app.get('/api/research/:id/report', async c => {
+    const row = await jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
     const report = row ? jobs.getReport(row) : null
     if (!row || !report) return c.json({ message: MESSAGES.notFound }, 404)
-    return c.json({ job: jobs.toView(row, notion.exportedInfo(row.id)), report })
+    return c.json({ job: jobs.toView(row, await notion.exportedInfo(row.id)), report })
   })
 
-  app.get('/api/research/:id/sources', c => {
-    const row = jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
+  app.get('/api/research/:id/sources', async c => {
+    const row = await jobs.getOwnedJob(db, c.get('userId'), c.req.param('id'))
     const report = row ? jobs.getReport(row) : null
     if (!report) return c.json({ message: MESSAGES.notFound }, 404)
     return c.json({ sources: report.sources })
@@ -250,41 +253,41 @@ export function createApp(deps: AppDeps): Hono<Env> {
 
   app.post('/api/research/:id/clarify', async c => {
     const userId = c.get('userId')
-    const row = jobs.getOwnedJob(db, userId, c.req.param('id'))
+    const row = await jobs.getOwnedJob(db, userId, c.req.param('id'))
     if (!row) return c.json({ message: MESSAGES.notFound }, 404)
     if (row.status !== 'NEEDS_CLARIFICATION') return c.json({ message: 'This research is already under way.' }, 409)
     const body = await readJson(c)
     if (body.skip === true) {
-      void engine.start(row.id, { skipClarification: true })
+      background(engine.start(row.id, { skipClarification: true }))
     } else {
       const text = typeof body.clarification === 'string' ? body.clarification.replace(/\s+/g, ' ').trim() : ''
       if (text.length < 1 || text.length > 500) return c.json({ message: 'Please type your answer.' }, 400)
-      jobs.saveClarification(db, row.id, text)
-      void engine.start(row.id)
+      await jobs.saveClarification(db, row.id, text)
+      background(engine.start(row.id))
     }
-    return c.json({ job: jobs.toView(jobs.getJobRow(db, row.id)!, null) })
+    return c.json({ job: jobs.toView((await jobs.getJobRow(db, row.id))!, null) })
   })
 
-  app.post('/api/research/:id/cancel', c => {
+  app.post('/api/research/:id/cancel', async c => {
     const userId = c.get('userId')
-    const row = jobs.getOwnedJob(db, userId, c.req.param('id'))
+    const row = await jobs.getOwnedJob(db, userId, c.req.param('id'))
     if (!row) return c.json({ message: MESSAGES.notFound }, 404)
     if (![...ACTIVE_STATUSES, 'NEEDS_CLARIFICATION'].includes(row.status)) {
-      return c.json({ job: jobs.toView(row, notion.exportedInfo(row.id)) })
+      return c.json({ job: jobs.toView(row, await notion.exportedInfo(row.id)) })
     }
-    jobs.setStatus(db, row.id, 'CANCELLED', { message: 'You stopped this research.' })
+    await jobs.setStatus(db, row.id, 'CANCELLED', { message: 'You stopped this research.' })
     engine.cancel(row.id)
     record(db, userId, 'research_cancelled')
-    return c.json({ job: jobs.toView(jobs.getJobRow(db, row.id)!, null) })
+    return c.json({ job: jobs.toView((await jobs.getJobRow(db, row.id))!, null) })
   })
 
   // ---- Integrations --------------------------------------------------
-  app.get('/api/integrations', c => c.json({ integrations: [notion.view(c.get('userId'))], notionAvailable: notion.configured }))
+  app.get('/api/integrations', async c => c.json({ integrations: [await notion.view(c.get('userId'))], notionAvailable: notion.configured }))
 
   app.post('/api/integrations/notion/connect', async c => c.json({ notion: await notion.connect(c.get('userId')) }))
 
   /** Returns the Notion sign-in address for "Connect Notion". */
-  app.post('/api/integrations/notion/sign-in', c => c.json({ url: notion.startSignIn(c.get('userId')) }))
+  app.post('/api/integrations/notion/sign-in', async c => c.json({ url: await notion.startSignIn(c.get('userId')) }))
 
   app.get('/api/integrations/notion/pages', async c => c.json({ pages: await notion.pages(c.get('userId')) }))
 
@@ -297,26 +300,26 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ notion: await notion.choosePages(c.get('userId'), id(body.readPageId), id(body.destinationId)) })
   })
 
-  app.delete('/api/integrations/notion', c => {
-    notion.disconnect(c.get('userId'))
-    return c.json({ notion: notion.view(c.get('userId')) })
+  app.delete('/api/integrations/notion', async c => {
+    await notion.disconnect(c.get('userId'))
+    return c.json({ notion: await notion.view(c.get('userId')) })
   })
 
   // ---- Report exports ------------------------------------------------
-  const ownedReport = (c: Context<Env>): { id: string; report: Report } | null => {
-    const row = jobs.getOwnedJob(db, c.get('userId'), c.req.param('id') ?? '')
+  const ownedReport = async (c: Context<Env>): Promise<{ id: string; report: Report } | null> => {
+    const row = await jobs.getOwnedJob(db, c.get('userId'), c.req.param('id') ?? '')
     const report = row ? jobs.getReport(row) : null
     return row && report ? { id: row.id, report } : null
   }
 
-  app.post('/api/reports/:id/export-preview', c => {
-    const found = ownedReport(c)
+  app.post('/api/reports/:id/export-preview', async c => {
+    const found = await ownedReport(c)
     if (!found) return c.json({ message: MESSAGES.notFound }, 404)
-    return c.json({ preview: notion.preview(c.get('userId'), found.id, found.report) })
+    return c.json({ preview: await notion.preview(c.get('userId'), found.id, found.report) })
   })
 
   app.post('/api/reports/:id/approve-export', async c => {
-    const found = ownedReport(c)
+    const found = await ownedReport(c)
     if (!found) return c.json({ message: MESSAGES.notFound }, 404)
     const body = await readJson(c)
     if (body.approved !== true || typeof body.previewId !== 'string' || typeof body.contentHash !== 'string') {
@@ -327,15 +330,15 @@ export function createApp(deps: AppDeps): Hono<Env> {
   })
 
   app.post('/api/reports/:id/reject-export', async c => {
-    const found = ownedReport(c)
+    const found = await ownedReport(c)
     if (!found) return c.json({ message: MESSAGES.notFound }, 404)
     const body = await readJson(c)
     if (typeof body.previewId !== 'string') return c.json({ message: MESSAGES.checkInput }, 400)
-    notion.reject(c.get('userId'), found.id, body.previewId)
+    await notion.reject(c.get('userId'), found.id, body.previewId)
     return c.json({ ok: true })
   })
 
-  app.all('/api/*', c => c.json({ message: MESSAGES.notFound }, 404))
+  app.all('/api/*', async c => c.json({ message: MESSAGES.notFound }, 404))
 
   return app
 }
@@ -349,8 +352,8 @@ async function readJson(c: Context): Promise<Record<string, unknown>> {
   }
 }
 
-export function getSettings(db: Db, userId: string): Settings {
-  const row = db.prepare('SELECT country, currency FROM users WHERE id = ?').get(userId) as
+export async function getSettings(db: Db, userId: string): Promise<Settings> {
+  const row = await db.get('SELECT country, currency FROM users WHERE id = ?', userId) as
     | { country: string | null; currency: string | null }
     | undefined
   return { country: row?.country ?? null, currency: row?.currency ?? null }

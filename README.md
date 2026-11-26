@@ -164,7 +164,8 @@ Open http://localhost:8787 and ask. To use the service's own Notion connection f
 | `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
 | `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-nano`) |
 | `ASKWISE_TRANSCRIBE_MODEL` | Model that turns speech into text (default `gpt-4o-mini-transcribe`) |
-| `ASKWISE_DATA_DIR` | Where AskWise keeps its database (default `./data`) |
+| `DATABASE_URL` | Postgres address for hosting (without it, AskWise uses a local SQLite file) |
+| `ASKWISE_DATA_DIR` | Where AskWise keeps its local database (default `./data`) |
 
 Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
 
@@ -178,6 +179,14 @@ Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
 1. Create a second connection with **OAuth** as the authentication method and the same capabilities.
 2. Set its redirect address to `https://<your-address>/api/integrations/notion/callback`.
 3. Put its client ID and secret in `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET`, and the redirect address in `NOTION_OAUTH_REDIRECT_URI`.
+
+### Deploy to Vercel
+
+AskWise deploys as one Vercel project: the app is served as static files and the service runs as a function (up to 5 minutes per request, enough for research).
+
+1. Create a Postgres database (for example Neon from the Vercel Marketplace) and set `DATABASE_URL`.
+2. Set `ASKWISE_SECRET` to a long random value, plus `OPENAI_API_KEY`, `NOTION_TOKEN` and the other variables above.
+3. Import the repository in Vercel. `vercel.json` runs `npm run build:vercel`, which writes the Build Output (`.vercel/output`).
 
 ### Run on the glasses
 
@@ -209,7 +218,7 @@ npm run pack
 npm test
 ```
 
-The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs`, `scripts/simulator-checks.mjs` and `scripts/simulator-voice.mjs` drive the full flow, the harder moments and voice questions in the official simulator.
+Set `TEST_DATABASE_URL` to a Postgres address to run the service tests against Postgres as well. The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs`, `scripts/simulator-checks.mjs` and `scripts/simulator-voice.mjs` drive the full flow, the harder moments and voice questions in the official simulator.
 
 ## Demo
 

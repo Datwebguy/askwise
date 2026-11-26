@@ -11,7 +11,8 @@
     "invite": "tsx scripts/invite.ts",
     "test": "vitest run",
     "simulate": "evenhub-simulator http://localhost:8787",
-    "pack": "npm run build && evenhub pack app.json dist"
+    "pack": "npm run build && evenhub pack app.json dist",
+    "build:vercel": "npm run build && node scripts/build-vercel.mjs"
   },
   "engines": {
     "node": ">=22.13"
@@ -22,6 +23,8 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@hono/node-server": "^2.1.11",
+    "@neondatabase/serverless": "^1.2.1",
+    "@vercel/functions": "^3.11.4",
     "hono": "^4.13.22"
   },
   "devDependencies": {
@@ -29,7 +32,9 @@
     "@evenrealities/evenhub-simulator": "^0.9.5",
     "@evenrealities/sim-linux-x64": "^0.9.5",
     "@types/node": "^26.6.11",
+    "@types/pg": "^8.23.1",
     "concurrently": "^10.0.7",
+    "pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.4.0",

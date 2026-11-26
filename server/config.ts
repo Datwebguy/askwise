@@ -3,6 +3,8 @@ import path from 'node:path'
 export interface Config {
   port: number
   dataDir: string
+  /** Postgres address for hosted use; without it AskWise uses a local SQLite file. */
+  databaseUrl: string | null
   openaiApiKey: string | null
   notionToken: string | null
   researchModel: string
@@ -31,6 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env.PORT ?? 8787),
     dataDir: path.resolve(env.ASKWISE_DATA_DIR ?? './data'),
+    databaseUrl: env.DATABASE_URL?.trim() || null,
     openaiApiKey: env.OPENAI_API_KEY?.trim() || null,
     notionToken: env.NOTION_TOKEN?.trim() || null,
     researchModel: env.ASKWISE_RESEARCH_MODEL ?? 'gpt-5.4-nano',

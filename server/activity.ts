@@ -26,13 +26,14 @@ export function redact(text: string): string {
   return text.replace(SECRET_PATTERN, '[hidden]')
 }
 
+/** Records an event without making the caller wait; a missed record never blocks the person. */
 export function record(db: Db, userId: string | null, event: ActivityEvent, detail?: string): void {
-  db.prepare('INSERT INTO activity (user_id, event, detail, created_at) VALUES (?, ?, ?, ?)').run(
+  void db.run('INSERT INTO activity (user_id, event, detail, created_at) VALUES (?, ?, ?, ?)', 
     userId,
     event,
     detail ? redact(detail).slice(0, 300) : null,
     now(),
-  )
+  ).catch(() => undefined)
 }
 
 /** Writes an operational line to the console with any credentials removed. */

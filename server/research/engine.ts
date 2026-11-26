@@ -16,7 +16,7 @@ export interface NotesReader {
 
 export interface EngineOptions {
   timeLimitMs: number
-  getSettings(userId: string): { country: string | null; currency: string | null }
+  getSettings(userId: string): Promise<{ country: string | null; currency: string | null }>
 }
 
 export class ResearchEngine {
@@ -37,8 +37,10 @@ export class ResearchEngine {
   start(jobId: string, opts: { skipClarification?: boolean } = {}): Promise<void> {
     const controller = new AbortController()
     this.running.set(jobId, controller)
-    jobs.setStatus(this.db, jobId, 'QUEUED')
-    const done = this.run(jobId, controller, opts.skipClarification ?? false).finally(() => this.running.delete(jobId))
+    const done = jobs
+      .setStatus(this.db, jobId, 'QUEUED')
+      .then(() => this.run(jobId, controller, opts.skipClarification ?? false))
+      .finally(() => this.running.delete(jobId))
     return done
   }
 
@@ -53,15 +55,15 @@ export class ResearchEngine {
 
   private async run(jobId: string, controller: AbortController, skipClarification: boolean): Promise<void> {
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(this.opts.timeLimitMs)])
-    const row = jobs.getJobRow(this.db, jobId)
+    const row = await jobs.getJobRow(this.db, jobId)
     if (!row || !this.provider) return
     const provider = this.provider
-    const step = (status: 'RUNNING' | 'VERIFYING', stage: Parameters<typeof jobs.setStage>[3]) => {
-      if (signal.aborted || !jobs.setStage(this.db, jobId, status, stage)) throw new StopSignal()
+    const step = async (status: 'RUNNING' | 'VERIFYING', stage: Parameters<typeof jobs.setStage>[3]) => {
+      if (signal.aborted || !(await jobs.setStage(this.db, jobId, status, stage))) throw new StopSignal()
     }
 
     try {
-      step('RUNNING', 'understanding')
+      await step('RUNNING', 'understanding')
       const notes = row.use_notion && this.notes ? await this.notes.readSelectedPage(row.user_id) : null
       const notesText = notes ? notes.text : null
 
@@ -69,36 +71,37 @@ export class ResearchEngine {
       if (row.plan_json) {
         plan = JSON.parse(row.plan_json) as Plan
       } else {
+        const settings = await this.opts.getSettings(row.user_id)
         plan = await withRetry(() =>
           provider.plan(
             {
               question: row.question,
               clarification: row.clarification,
-              settings: this.opts.getSettings(row.user_id),
+              settings,
               notes: notesText,
             },
             signal,
           ),
         )
-        jobs.savePlan(this.db, jobId, plan)
+        await jobs.savePlan(this.db, jobId, plan)
       }
 
       if (plan.needsClarification && plan.clarifyingQuestion && !row.clarification && !skipClarification) {
-        jobs.askClarification(this.db, jobId, plan.clarifyingQuestion)
+        await jobs.askClarification(this.db, jobId, plan.clarifyingQuestion)
         return
       }
 
-      step('RUNNING', 'searching')
+      await step('RUNNING', 'searching')
       const found = await withRetry(() =>
         provider.search({ question: row.question, clarification: row.clarification, plan, notes: notesText }, signal),
       )
       const checkedAt = new Date().toISOString()
       const sources = numberSources(found.sources)
 
-      step('RUNNING', 'organising')
+      await step('RUNNING', 'organising')
       const raw = await withRetry(() => provider.structure({ question: row.question, plan, notes: found.notes, sources }, signal))
 
-      step('VERIFYING', 'checking')
+      await step('VERIFYING', 'checking')
       const report = verifyReport(raw, {
         question: row.clarification ? `${row.question} (${row.clarification})` : row.question,
         researchType: plan.researchType,
@@ -108,8 +111,8 @@ export class ResearchEngine {
         citedIds: sources.filter(s => found.sources.some(f => f.cited && f.url === s.url)).map(s => s.id),
       })
 
-      step('VERIFYING', 'writing')
-      jobs.saveReport(this.db, jobId, report, needsReview(report) ? 'NEEDS_REVIEW' : 'READY')
+      await step('VERIFYING', 'writing')
+      await jobs.saveReport(this.db, jobId, report, needsReview(report) ? 'NEEDS_REVIEW' : 'READY')
     } catch (e) {
       // Stopped by the person: the cancellation is already recorded.
       if (controller.signal.aborted) return
@@ -118,7 +121,7 @@ export class ResearchEngine {
       const reason = signal.aborted ? 'time limit reached' : (e as Error).message
       log(`research ${jobId} stopped: ${reason}`)
       record(this.db, row.user_id, 'research_stopped', reason)
-      jobs.setStatus(this.db, jobId, 'FAILED', { message: MESSAGES.researchStopped })
+      await jobs.setStatus(this.db, jobId, 'FAILED', { message: MESSAGES.researchStopped })
     }
   }
 }

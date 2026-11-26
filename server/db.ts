@@ -1,8 +1,19 @@
+// Storage for AskWise. The same queries run on SQLite (local use and tests)
+// and on Postgres (hosted). Queries use "?" placeholders.
 import { DatabaseSync } from 'node:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
 
-export type Db = DatabaseSync
+export interface Db {
+  readonly kind: 'sqlite' | 'postgres'
+  get<T>(sql: string, ...args: unknown[]): Promise<T | undefined>
+  all<T>(sql: string, ...args: unknown[]): Promise<T[]>
+  run(sql: string, ...args: unknown[]): Promise<{ changes: number }>
+  /** Runs fn inside one transaction; everything inside must use the db it is given. */
+  transaction<T>(fn: (db: Db) => Promise<T>): Promise<T>
+  /** Releases connections. */
+  close(): Promise<void>
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -95,30 +106,139 @@ CREATE TABLE IF NOT EXISTS oauth_states (
 );
 `
 
+// ---- SQLite (local use and tests) -----------------------------------
+class SqliteDb implements Db {
+  readonly kind = 'sqlite' as const
+  private queue: Promise<unknown> = Promise.resolve()
+
+  constructor(private readonly raw: DatabaseSync) {}
+
+  async get<T>(sql: string, ...args: unknown[]): Promise<T | undefined> {
+    return this.raw.prepare(sql).get(...(args as never[])) as T | undefined
+  }
+  async all<T>(sql: string, ...args: unknown[]): Promise<T[]> {
+    return this.raw.prepare(sql).all(...(args as never[])) as unknown as T[]
+  }
+  async run(sql: string, ...args: unknown[]): Promise<{ changes: number }> {
+    return { changes: Number(this.raw.prepare(sql).run(...(args as never[])).changes) }
+  }
+  async close(): Promise<void> {
+    this.raw.close()
+  }
+  /** SQLite has one connection, so transactions wait for each other. */
+  transaction<T>(fn: (db: Db) => Promise<T>): Promise<T> {
+    const next = this.queue.then(async () => {
+      this.raw.exec('BEGIN IMMEDIATE')
+      try {
+        const out = await fn(this)
+        this.raw.exec('COMMIT')
+        return out
+      } catch (e) {
+        this.raw.exec('ROLLBACK')
+        throw e
+      }
+    })
+    this.queue = next.catch(() => undefined)
+    return next
+  }
+}
+
 export function openDb(file: string): Db {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true })
-  const db = new DatabaseSync(file)
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
-  db.exec(SCHEMA)
+  const raw = new DatabaseSync(file)
+  raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
+  raw.exec(SCHEMA)
   for (const [table, column, definition] of ADDED_COLUMNS) {
-    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
-    if (!cols.some(c => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+    const cols = raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some(c => c.name === column)) raw.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
   }
-  db.exec(LATER_TABLES)
-  return db
+  raw.exec(LATER_TABLES)
+  return new SqliteDb(raw)
+}
+
+// ---- Postgres (hosted) ----------------------------------------------
+/** Turns "?" placeholders into $1, $2 and so on. */
+export function toPostgres(sql: string): string {
+  let n = 0
+  return sql.replace(/[?]/g, () => `$${++n}`)
+}
+
+interface PgQueryable {
+  query(sql: string, params?: unknown[]): Promise<{ rows: unknown[]; rowCount: number | null }>
+}
+
+/** Postgres returns COUNT(*) as text; AskWise always names counts "n". */
+function fixRow<T>(row: unknown): T {
+  const r = row as Record<string, unknown>
+  if (r && typeof r.n === 'string') r.n = Number(r.n)
+  return r as T
+}
+
+class PostgresDb implements Db {
+  readonly kind = 'postgres' as const
+
+  constructor(
+    private readonly q: PgQueryable,
+    private readonly connect: (() => Promise<{ client: PgQueryable; release(): void }>) | null,
+    private readonly end: () => Promise<void> = async () => undefined,
+  ) {}
+
+  close(): Promise<void> {
+    return this.end()
+  }
+
+  async get<T>(sql: string, ...args: unknown[]): Promise<T | undefined> {
+    const r = await this.q.query(toPostgres(sql), args)
+    return r.rows[0] === undefined ? undefined : fixRow<T>(r.rows[0])
+  }
+  async all<T>(sql: string, ...args: unknown[]): Promise<T[]> {
+    return (await this.q.query(toPostgres(sql), args)).rows.map(x => fixRow<T>(x))
+  }
+  async run(sql: string, ...args: unknown[]): Promise<{ changes: number }> {
+    return { changes: (await this.q.query(toPostgres(sql), args)).rowCount ?? 0 }
+  }
+  async transaction<T>(fn: (db: Db) => Promise<T>): Promise<T> {
+    if (!this.connect) return fn(this)
+    const { client, release } = await this.connect()
+    try {
+      await client.query('BEGIN')
+      const out = await fn(new PostgresDb(client, null))
+      await client.query('COMMIT')
+      return out
+    } catch (e) {
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      release()
+    }
+  }
+}
+
+/** Any pg-compatible pool: Neon's serverless pool when hosted, or the standard pg pool for tests. */
+export interface PgPool extends PgQueryable {
+  connect(): Promise<PgQueryable & { release(): void }>
+  end(): Promise<void>
+}
+
+export async function openPostgresPool(pool: PgPool): Promise<Db> {
+  const schema = (SCHEMA + LATER_TABLES).replace('id INTEGER PRIMARY KEY AUTOINCREMENT', 'id SERIAL PRIMARY KEY')
+  for (const stmt of schema.split(';').map(x => x.trim()).filter(Boolean)) await pool.query(stmt)
+  for (const [table, column, definition] of ADDED_COLUMNS) {
+    await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${definition}`)
+  }
+  return new PostgresDb(
+    pool,
+    async () => {
+      const client = await pool.connect()
+      return { client, release: () => client.release() }
+    },
+    () => pool.end(),
+  )
+}
+
+export async function openPostgres(url: string): Promise<Db> {
+  const { Pool } = await import('@neondatabase/serverless')
+  return openPostgresPool(new Pool({ connectionString: url }) as unknown as PgPool)
 }
 
 export const now = () => new Date().toISOString()
-
-/** Runs fn inside a transaction. */
-export function tx<T>(db: Db, fn: () => T): T {
-  db.exec('BEGIN IMMEDIATE')
-  try {
-    const out = fn()
-    db.exec('COMMIT')
-    return out
-  } catch (e) {
-    db.exec('ROLLBACK')
-    throw e
-  }
-}
