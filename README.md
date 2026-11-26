@@ -19,6 +19,8 @@ People who make decisions on the move: shoppers comparing products, students cho
 
 ## How it works
 
+Open AskWise and start. There is nothing to sign up for and nothing to paste: each device gets its own private space automatically.
+
 1. **Ask** on your phone: name your options and what matters to you.
 2. **AskWise researches.** It searches the web, reads official pages, reviews and shops, and compares what it finds.
 3. **It checks.** Every important fact is matched to the page it came from. Facts without a source are never shown as confirmed.
@@ -79,9 +81,11 @@ AskWise gives a short explanation, the key facts with their sources, where sourc
 
 AskWise connects to Notion so your research lives where your work does.
 
+- **Connect in one tap.** "Connect Notion" opens Notion's own sign-in, where you pick the pages AskWise may use. Nothing to copy or paste.
 - **Read a page you choose.** For example, a page with your budget, your country and the features you care about. AskWise reads only that page, and treats it as information, never as instructions.
 - **Save reports you approve.** You see the destination and the exact content first. AskWise creates one new page only after you tick "I've read it" and press Save. Saving again never makes a copy.
-- **You stay in control.** AskWise only sees pages you share with it in Notion, and you can disconnect at any time.
+- **Or share without connecting.** Anyone can save a report to the public *AskWise shared reports* page. The preview says clearly that anyone with the link can read it.
+- **You stay in control.** AskWise only sees pages you choose in Notion, your Notion access is stored encrypted, and you can disconnect at any time.
 
 ## Why glasses
 
@@ -110,6 +114,7 @@ Phone page  ─┘   (Even Hub SDK)     (Node, SQLite) └─ Notion
 
 ## Privacy and security
 
+- No account or personal details are needed. Each device has its own private space.
 - Your questions are sent for research only when you press Research.
 - Notion pages are read only if you choose one, and only that page.
 - Nothing is saved to Notion until you approve the exact content.
@@ -117,6 +122,7 @@ Phone page  ─┘   (Even Hub SDK)     (Node, SQLite) └─ Notion
 - Each person's research is private to their account.
 - Activity records never contain keys, report text or page content.
 - You can delete everything AskWise holds about you from Settings.
+- Fair-use limits keep the service available for everyone: a few questions per device each hour, and a daily total.
 
 AskWise does not buy anything, send messages or change accounts.
 
@@ -129,15 +135,24 @@ npm install
 cp .env.example .env      # then fill in the values below
 npm run build
 npm start                 # serves the app and the service on http://localhost:8787
-npm run invite            # prints a one-time sign-in code
 ```
+
+Open http://localhost:8787 and ask. To use the service's own Notion connection from your device, run `npm run invite -- --owner` and open the address it prints.
 
 ### Environment variables
 
 | Name | Purpose |
 |---|---|
 | `OPENAI_API_KEY` | Research with OpenAI web search |
-| `NOTION_TOKEN` | Your Notion connection's secret |
+| `NOTION_TOKEN` | The service's Notion connection, used for the shared page and the owner's pages |
+| `NOTION_SHARED_PAGE_ID` | Notion page anyone can save reports to |
+| `NOTION_SHARED_PAGE_URL` | Public link to that page (Notion: Share → Publish) |
+| `NOTION_OAUTH_CLIENT_ID` | Public Notion connection, for "Connect Notion" |
+| `NOTION_OAUTH_CLIENT_SECRET` | Its secret |
+| `NOTION_OAUTH_REDIRECT_URI` | `https://<your-address>/api/integrations/notion/callback` |
+| `ASKWISE_SECRET` | Key for encrypting stored Notion access (created automatically if not set) |
+| `ASKWISE_RESEARCH_PER_HOUR` | Questions per device per hour (default 10) |
+| `ASKWISE_RESEARCH_PER_DAY` | Questions per day in total (default 150) |
 | `PORT` | Port for the app (default 8787) |
 | `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
 | `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-nano`) |
@@ -145,13 +160,16 @@ npm run invite            # prints a one-time sign-in code
 
 Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
 
-### Connect Notion
+### Set up Notion
 
-1. In Notion, open **Settings → Connections → Develop or manage integrations** and create a connection with an API token.
-2. Give it **Read content** and **Insert content** only, and **No user information**.
-3. Put its token in `NOTION_TOKEN`.
-4. Open the Notion page AskWise should use, choose **⋯ → Connections** and add your connection. Pages inside it are included.
-5. In AskWise, go to **Settings → Notion**, press **Connect Notion**, then choose the page to read and the page to save reports inside.
+**Shared page (for everyone):**
+1. In Notion's developer settings, create a connection with an API token. Give it **Read content** and **Insert content** only, and **No user information**. Put its token in `NOTION_TOKEN`.
+2. Create a page for shared reports, add your connection to it (**⋯ → Connections**), and publish it (**Share → Publish**). Put its ID and public link in `NOTION_SHARED_PAGE_ID` and `NOTION_SHARED_PAGE_URL`.
+
+**Connect Notion (each person's own workspace):**
+1. Create a second connection with **OAuth** as the authentication method and the same capabilities.
+2. Set its redirect address to `https://<your-address>/api/integrations/notion/callback`.
+3. Put its client ID and secret in `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET`, and the redirect address in `NOTION_OAUTH_REDIRECT_URI`.
 
 ### Run on the glasses
 
