@@ -24,8 +24,32 @@ function shell(active: string, content: string): string {
     `<a href="${href}" class="${active === name ? 'active' : ''}">${text}</a>`
   return `
     <header class="top"><a href="#/" class="brand">${logo(26)}AskWise</a>
-      <nav class="nav">${tab('#/', 'ask', 'Ask')}${tab('#/history', 'history', 'History')}${tab('#/settings', 'settings', 'Settings')}</nav></header>
+      <div class="top-right"><nav class="nav">${tab('#/', 'ask', 'Ask')}${tab('#/history', 'history', 'History')}${tab('#/settings', 'settings', 'Settings')}</nav>${themeButton()}</div></header>
     <main id="view" class="view-enter">${content}</main>`
+}
+
+const SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+const MOON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
+
+function currentTheme(): 'light' | 'dark' {
+  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+}
+
+function themeButton(): string {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark'
+  return `<button class="theme-toggle" data-theme-toggle aria-label="Switch to ${next} mode" title="Switch to ${next} mode">${next === 'light' ? SUN : MOON}</button>`
+}
+
+export function toggleTheme(): void {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark'
+  document.documentElement.dataset.theme = next
+  try {
+    localStorage.setItem('askwise.theme', next)
+  } catch {
+    /* the choice then lasts for this visit */
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#f4f6fa' : '#0d1320')
+  document.querySelectorAll('[data-theme-toggle]').forEach(b => (b.outerHTML = themeButton()))
 }
 
 function notice(text: string, kind: 'info' | 'warn' = 'info'): string {
@@ -180,7 +204,7 @@ function bindProgress(root: HTMLElement): void {
 
 // ---- Report ------------------------------------------------------------
 async function renderReport(root: HTMLElement, id: string): Promise<void> {
-  root.innerHTML = shell('history', '<p class="small">Opening report…</p>')
+  root.innerHTML = shell('report', '<p class="small">Opening report…</p>')
   try {
     const { job, report } = await api.report(id)
     $(root, '#view').innerHTML = reportHtml(job, report)
@@ -199,7 +223,7 @@ async function renderReport(root: HTMLElement, id: string): Promise<void> {
 
 // ---- Save to Notion ----------------------------------------------------
 async function renderSave(root: HTMLElement, id: string): Promise<void> {
-  root.innerHTML = shell('history', '<p class="small">Preparing what will be saved…</p>')
+  root.innerHTML = shell('report', '<p class="small">Preparing what will be saved…</p>')
   const view = $(root, '#view')
   try {
     const { preview } = await api.exportPreview(id)
@@ -430,6 +454,9 @@ export async function route(root: HTMLElement): Promise<void> {
 
 export function startPhone(root: HTMLElement): void {
   window.addEventListener('hashchange', () => void route(root))
+  document.addEventListener('click', e => {
+    if ((e.target as HTMLElement).closest('[data-theme-toggle]')) toggleTheme()
+  })
   const banner = document.createElement('div')
   banner.className = 'offline-banner'
   banner.setAttribute('role', 'status')

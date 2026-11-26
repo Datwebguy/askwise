@@ -77,3 +77,11 @@ export function userForToken(db: Db, token: string | undefined | null): string |
 export function endSession(db: Db, token: string): void {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token))
 }
+
+/** Removes sessions and sign-in codes that have expired. */
+export function removeExpired(db: Db): number {
+  const t = now()
+  const a = db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t)
+  const b = db.prepare('DELETE FROM invites WHERE expires_at < ? AND used_at IS NULL').run(t)
+  return Number(a.changes) + Number(b.changes)
+}

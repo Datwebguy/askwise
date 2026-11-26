@@ -111,7 +111,10 @@ export class ResearchEngine {
       step('VERIFYING', 'writing')
       jobs.saveReport(this.db, jobId, report, needsReview(report) ? 'NEEDS_REVIEW' : 'READY')
     } catch (e) {
-      if (e instanceof StopSignal || controller.signal.aborted) return
+      // Stopped by the person: the cancellation is already recorded.
+      if (controller.signal.aborted) return
+      // Stopped because the record changed state (for example it was deleted or cancelled elsewhere).
+      if (e instanceof StopSignal && !signal.aborted) return
       const reason = signal.aborted ? 'time limit reached' : (e as Error).message
       log(`research ${jobId} stopped: ${reason}`)
       record(this.db, row.user_id, 'research_stopped', reason)

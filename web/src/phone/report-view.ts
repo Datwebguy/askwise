@@ -69,7 +69,7 @@ function compareTable(report: Report): string {
   return `
     <div class="card">
       <div class="table-wrap"><table>
-        <thead><tr><th></th>${ps.map((p, i) => `<th scope="col"${cls(i)}>${esc(productName(p))}${best[i] ? '<div class="small" style="color:#8fb2ff">Best match</div>' : ''}</th>`).join('')}</tr></thead>
+        <thead><tr><th></th>${ps.map((p, i) => `<th scope="col"${cls(i)}>${esc(productName(p))}${best[i] ? '<div class="small" style="color:var(--accent-text)">Best match</div>' : ''}</th>`).join('')}</tr></thead>
         <tbody><tr class="price"><th scope="row">Price</th>${prices.join('')}</tr>${rows.join('')}</tbody>
       </table></div>
     </div>`
@@ -137,7 +137,7 @@ export function reportHtml(job: JobView, report: Report): string {
     : ''
 
   const checksPanel = `
-    ${report.conflicts.length ? `<div class="card" style="border-color:rgba(245,165,36,.3)"><p class="eyebrow" style="color:var(--amber)">Where sources disagree</p><ul class="list">${report.conflicts.map(c => `<li><strong>${esc(c.topic)}</strong><div style="color:var(--text-2)">${esc(c.details)}${refs(c.sourceIds, report.sources)}</div></li>`).join('')}</ul></div>` : ''}
+    ${report.conflicts.length ? `<div class="card" style="border-color:var(--amber)"><p class="eyebrow" style="color:var(--amber-text)">Where sources disagree</p><ul class="list">${report.conflicts.map(c => `<li><strong>${esc(c.topic)}</strong><div style="color:var(--text-2)">${esc(c.details)}${refs(c.sourceIds, report.sources)}</div></li>`).join('')}</ul></div>` : ''}
     <div class="card">
       <ul class="list">${report.claims.map(c => `<li>${label(c.status)}<div style="margin-top:6px">${esc(c.text)}${refs(c.sourceIds, report.sources)}</div>${c.note ? `<div class="small">${esc(c.note)}</div>` : ''}</li>`).join('')}</ul>
       <details><summary>What these labels mean</summary><ul class="list" style="margin-top:10px">${CLAIM_STATUSES.map(s => `<li>${label(s)} <span class="small">${esc(CLAIM_EXPLANATIONS[s])}</span></li>`).join('')}</ul></details>

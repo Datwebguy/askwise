@@ -4,6 +4,7 @@ import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { loadConfig } from './config.ts'
 import { openDb } from './db.ts'
+import { removeExpired } from './auth.ts'
 import { createApp, getSettings } from './app.ts'
 import { log } from './activity.ts'
 import { MESSAGES } from '../shared/labels.ts'
@@ -15,6 +16,7 @@ import { NotionService } from './notion/service.ts'
 const config = loadConfig()
 const db = openDb(path.join(config.dataDir, 'askwise.db'))
 
+removeExpired(db)
 const interrupted = markInterrupted(db, MESSAGES.interrupted)
 if (interrupted) log(`${interrupted} research request(s) were interrupted by a restart`)
 
