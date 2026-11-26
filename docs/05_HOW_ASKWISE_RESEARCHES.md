@@ -1,4 +1,4 @@
-# 05. HOW AskWise RESEARCHES
+# 05. HOW ASKWISE RESEARCHES
 
 ## 1. Main goal
 
