@@ -13,9 +13,12 @@ export interface Screen {
   footer: string
 }
 
-export const HINT_HOME = 'Tap: open answer   Double-tap: exit'
+export const HINT_HOME = 'Hold: speak   Tap: answer   Double-tap: exit'
 export const HINT_PAGES = 'Tap: next   Swipe up: back   Double-tap: exit'
-export const HINT_WAIT = 'Double-tap: exit'
+export const HINT_WAIT = 'Hold: speak   Double-tap: exit'
+export const HINT_LISTEN = 'Let go when you are done'
+export const HINT_DRAFT = 'Tap: ask   Double-tap: discard   Hold: again'
+export const HINT_BACK = 'Tap: back   Hold: try again'
 
 const STAGE_ORDER = ['understanding', 'searching', 'organising', 'checking', 'writing'] as const
 
@@ -23,7 +26,7 @@ export function welcomeScreen(signedIn: boolean): Screen {
   return {
     title: 'AskWise',
     body: signedIn
-      ? 'Research anything. Compare your options.\n\nType a question in AskWise on your phone to start.'
+      ? 'Research anything. Compare your options.\n\nHold the touchpad and ask, or type a question in AskWise on your phone.'
       : 'Research anything. Compare your options.\n\nOpen AskWise on your phone and sign in to start.',
     footer: HINT_WAIT,
   }
@@ -32,7 +35,7 @@ export function welcomeScreen(signedIn: boolean): Screen {
 export function homeScreen(job: JobView): Screen {
   return {
     title: 'AskWise',
-    body: `Latest question:\n${job.question}\n\nType a new question on your phone.`,
+    body: `Latest question:\n${job.question}\n\nHold the touchpad to ask something new.`,
     footer: HINT_HOME,
   }
 }
@@ -128,4 +131,20 @@ export function viewFor(state: { signedIn: boolean; job: JobView | null; report:
 
 function truncate(s: string, n: number): string {
   return s.length <= n ? s : `${s.slice(0, n - 1)}…`
+}
+
+export function listeningScreen(): Screen {
+  return { title: 'Listening', body: 'Ask your question.\n\nFor example: compare two phones for battery life under 800 dollars.', footer: HINT_LISTEN }
+}
+
+export function writingScreen(): Screen {
+  return { title: 'Got it', body: 'Writing down your question…', footer: 'One moment' }
+}
+
+export function draftScreen(text: string): Screen {
+  return { title: 'Your question', body: text, footer: HINT_DRAFT }
+}
+
+export function voiceProblemScreen(message: string): Screen {
+  return { title: 'AskWise', body: message, footer: HINT_BACK }
 }

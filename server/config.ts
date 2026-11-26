@@ -7,6 +7,7 @@ export interface Config {
   notionToken: string | null
   researchModel: string
   plannerModel: string
+  transcribeModel: string
   /** Maximum time one research run may take, in milliseconds. */
   researchTimeLimitMs: number
   /** Maximum research runs one person can start per hour. */
@@ -34,6 +35,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     notionToken: env.NOTION_TOKEN?.trim() || null,
     researchModel: env.ASKWISE_RESEARCH_MODEL ?? 'gpt-5.4-nano',
     plannerModel: env.ASKWISE_PLANNER_MODEL ?? 'gpt-5.4-nano',
+    transcribeModel: env.ASKWISE_TRANSCRIBE_MODEL ?? 'gpt-4o-mini-transcribe',
     researchTimeLimitMs: Number(env.ASKWISE_RESEARCH_TIME_LIMIT_MS ?? 6 * 60_000),
     researchPerHour: Number(env.ASKWISE_RESEARCH_PER_HOUR ?? 10),
     researchPerDay: Number(env.ASKWISE_RESEARCH_PER_DAY ?? 150),

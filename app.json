@@ -6,6 +6,13 @@
   "min_app_version": "2.0.0",
   "min_sdk_version": "0.0.16",
   "entrypoint": "index.html",
-  "permissions": [],
-  "supported_languages": ["en"]
+  "permissions": [
+    {
+      "name": "g2-microphone",
+      "desc": "Listens only while you hold the touchpad, so you can ask a question by voice."
+    }
+  ],
+  "supported_languages": [
+    "en"
+  ]
 }
