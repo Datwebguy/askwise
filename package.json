@@ -1,0 +1,35 @@
+{
+  "name": "askwise",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AskWise: research and decision assistant for Even Realities G2 glasses",
+  "scripts": {
+    "dev": "concurrently -k -n server,web \"tsx watch server/index.ts\" \"vite\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "invite": "tsx scripts/invite.ts",
+    "test": "vitest run",
+    "simulate": "evenhub-simulator http://localhost:8787",
+    "pack": "npm run build && evenhub pack app.json dist"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.16",
+    "@evenrealities/pretext": "^0.1.4",
+    "@hono/node-server": "^2.1.11",
+    "hono": "^4.13.22"
+  },
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "^0.2.0",
+    "@evenrealities/evenhub-simulator": "^0.9.5",
+    "@types/node": "^26.6.11",
+    "concurrently": "^10.0.7",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.4.0",
+    "vitest": "^5.1.2"
+  }
+}
