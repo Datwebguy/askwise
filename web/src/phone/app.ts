@@ -445,16 +445,26 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
 }
 
 // ---- Router ------------------------------------------------------------
+let linkSignIn: Promise<string | null> | null = null
+
 export async function route(root: HTMLElement): Promise<void> {
   const link = location.hash.match(/^#\/code\/([A-Za-z0-9-]{6,40})$/)
-  if (link) {
+  if (link && !linkSignIn) {
     history.replaceState(null, '', location.pathname)
-    try {
-      setToken((await api.signIn(link[1])).token)
-    } catch (err) {
-      return renderStart(root, friendly(err))
-    }
+    // While a code from another device is being used, no other space may be opened for this device.
+    linkSignIn = api
+      .signIn(link[1])
+      .then(r => {
+        setToken(r.token)
+        return null
+      })
+      .catch(err => friendly(err))
+    const problem = await linkSignIn
+    linkSignIn = null
+    if (problem) return renderStart(root, problem)
+    return
   }
+  if (linkSignIn) return
   if (!getToken()) {
     // Open straight away: a private space for this device, with nothing to type.
     try {
