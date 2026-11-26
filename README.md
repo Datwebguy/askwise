@@ -1,87 +1,206 @@
-# AskWise
+<p align="center"><img src="web/public/icon.svg" width="88" alt="AskWise"></p>
 
-**Research anything. Compare your options. Know what to choose.**
+<h1 align="center">AskWise</h1>
 
-AskWise is an AI research assistant built for Even Realities G2 smart glasses.
+<p align="center"><strong>Research anything. Compare your options. Know what to choose.</strong><br>
+A research and decision assistant for Even Realities G2 glasses.</p>
 
-It helps you find information, compare products, understand your options, and make better decisions without opening dozens of websites.
+<p align="center"><img src="media/askwise-flow.png" alt="AskWise on the G2 glasses and the phone" width="900"></p>
 
-### What problem does AskWise solve?
+## The problem
 
-Suppose you want to buy a laptop.
+You want to buy a laptop. There are three good options. One site lists different specs from another, prices change from shop to shop, and reviews disagree. An hour later you have twenty tabs open and still no answer.
 
-You have three options, but you don't know which one offers the best value. One website says one thing. Another gives different specifications. Prices vary between shops. Reviews disagree.
+AskWise does that work for you. You ask once. It reads the web, checks what it finds against the sources and gives you a straight answer, with the evidence a tap away.
 
-You spend hours searching.
+## Who it is for
 
-AskWise does the research for you.
+People who make decisions on the move: shoppers comparing products, students choosing tools, professionals picking software, and anyone who wants a quick, trustworthy answer without opening a dozen websites.
 
-You ask a question. AskWise searches for useful information, checks the sources, compares your options, and gives you a clear answer.
+## How it works
 
-### How does AskWise work?
+1. **Ask** on your phone: name your options and what matters to you.
+2. **AskWise researches.** It searches the web, reads official pages, reviews and shops, and compares what it finds.
+3. **It checks.** Every important fact is matched to the page it came from. Facts without a source are never shown as confirmed.
+4. **Your glasses show the answer**: the best pick, the reason, the main drawback, how strong the evidence is and when prices were checked.
+5. **Your phone shows the full report**: a comparison table, specs, prices, reviews, checked facts, disagreements and every source.
+6. **You decide whether to save it.** You see exactly what will go into Notion, and nothing is written until you approve.
 
-1. Ask AskWise a question using your glasses or phone.
-2. AskWise searches the web for useful information.
-3. It compares the information and checks important details.
-4. It gives you a short answer on your glasses.
-5. Your phone shows the full research, sources, comparisons and explanations.
-6. You decide whether to save the report to Notion.
+## What appears on the glasses
 
-### What can AskWise research?
+Short screens built for a 576 × 288 display. Tap to move forward, swipe up to go back, double-tap to exit.
 
-- Products such as laptops, phones and other everyday items.
-- Product specifications, prices, reviews and alternatives.
-- Software, websites and online services.
-- Technology, programming tools and technical questions.
-- General topics and current information.
-- Differences between competing products and services.
-- Information from selected Notion pages.
+| Screen | What it shows |
+|---|---|
+| Researching | The real step AskWise is on, as it happens |
+| Answer | One plain sentence and the best pick |
+| Why | The main reason |
+| Watch out | The biggest drawback |
+| Evidence | How well supported the answer is, how many sources, when prices were checked |
+| More options | Alternatives worth a look |
+| Save | A reminder to review and approve on the phone |
 
-Product research and product comparison are core parts of AskWise. They must remain in the product.
+<p align="center"><img src="media/glasses-screens.png" alt="AskWise glasses screens" width="900"></p>
 
-### What makes AskWise useful?
+## What appears on the phone
 
-AskWise does more than collect search results.
+The full report on one screen: the short answer first, then **Overview**, **Compare**, **Checks** and **Sources** tabs. Every fact carries small numbered links to the pages it came from.
 
-It checks whether important information has reliable sources. It identifies differences between conflicting reports. It tells you when information is missing or outdated.
+<p align="center"><img src="media/phone-screens.png" alt="AskWise phone screens" width="900"></p>
 
-It also checks product versions carefully. Two products with similar names might have different specifications.
+### How AskWise labels information
 
-For prices, AskWise records the currency, country, shop, source and time checked. If it cannot verify a price, it says so.
+| Label | Meaning |
+|---|---|
+| Confirmed | A reliable source supports this |
+| Backed by several sources | More than one independent source supports this |
+| Sources disagree | Reliable sources say different things |
+| Not confirmed yet | There is not enough evidence |
+| May be out of date | The information is old |
+| Our conclusion | AskWise worked this out from the facts it found |
 
-### What appears on your glasses?
+### Prices
 
-Your glasses show the main answer, the reason behind it, an important disadvantage and how well the information is supported.
+Each price shows the amount, currency, country, shop, type (regular, sale, used or estimate), its source and the time it was checked. If AskWise cannot confirm a price from a real page, it says: *Check the shop for today's price.*
 
-Your phone shows the full report, comparison tables, sources and other details.
+## Examples
 
-### What does Notion do?
+**Product comparison**
+> Compare the MacBook Air M4 13-inch, Dell XPS 13 9350 and ASUS Zenbook 14 OLED for programming, school work and battery life. My budget is $1,100.
 
-AskWise connects to Notion.
+AskWise identifies the exact models and variants, compares specs side by side, finds shop prices with the time checked, flags anything over budget and recommends the best match with its main drawback.
 
-You choose which Notion pages AskWise is allowed to read. When research is complete, AskWise prepares a report for saving.
+**General research**
+> Explain the current state of passkeys for everyday users.
 
-You review the report and approve it before AskWise writes anything to Notion.
+AskWise gives a short explanation, the key facts with their sources, where sources disagree and what is still unclear.
 
-### Our main goal
+## Notion
 
-Build a research assistant people find useful in everyday life.
+AskWise connects to Notion so your research lives where your work does.
 
-AskWise should make research easier, help people compare their options and give them clearer information before they make decisions.
+- **Read a page you choose.** For example, a page with your budget, your country and the features you care about. AskWise reads only that page, and treats it as information, never as instructions.
+- **Save reports you approve.** You see the destination and the exact content first. AskWise creates one new page only after you tick "I've read it" and press Save. Saving again never makes a copy.
+- **You stay in control.** AskWise only sees pages you share with it in Notion, and you can disconnect at any time.
 
-### Hackathon information
+## Why glasses
 
-- Event: Heads Up: Even Realities Hackathon.
-- Track: AI Assistants and Work.
-- Main integration: Notion.
-- Research provider: OpenAI.
-- Deadline: November 29, 2026, at 23:59 Dubai time.
+The answer you need is short: which one, why, and what to watch out for. On G2 it sits in your line of sight while you are in a shop, in a meeting or on the move. The phone holds the detail for when you want to dig in.
 
-Check the official event page before submitting:
-https://dorahacks.io/hackathon/even-realities/detail
+## How it is built
 
-### Important
+```
+G2 glasses  ─┐                                  ┌─ OpenAI (web search)
+             ├─ AskWise web app ── AskWise service ┤
+Phone page  ─┘   (Even Hub SDK)     (Node, SQLite) └─ Notion
+```
 
-The full product vision is broad. The first version should focus on a few complete features that work reliably.
+| Part | What it does | Where |
+|---|---|---|
+| Glasses screens | Short screens, gestures, live progress | `web/src/glasses` |
+| Phone pages | Ask, report, save approval, history, settings | `web/src/phone` |
+| Research engine | Plan, search, structure, check, write | `server/research` |
+| Checking step | Enforces the source rules on every report | `server/research/verify.ts` |
+| Notion | Connection, page reading, approved saving | `server/notion` |
+| Shared wording | Every label and message people see | `shared/labels.ts` |
 
-Read the other project documents before implementation.
+**Research steps.** AskWise plans the question, searches the web with OpenAI's web search tool, turns the findings into a structured report under a strict format, then checks it: any source the search did not actually return is removed, unsupported facts become "Not confirmed yet", and prices without a real shop page are removed. Research runs on the service, so it keeps going if the glasses app is closed, and the glasses pick it up again when reopened.
+
+**Saving safely.** Each save preview has a fingerprint of its exact content and destination. Approval only goes through if the content and destination are unchanged, and a repeated approval returns the page that already exists.
+
+## Privacy and security
+
+- Your questions are sent for research only when you press Research.
+- Notion pages are read only if you choose one, and only that page.
+- Nothing is saved to Notion until you approve the exact content.
+- API keys live only on the AskWise service. The glasses and phone never see them.
+- Each person's research is private to their account.
+- Activity records never contain keys, report text or page content.
+- You can delete everything AskWise holds about you from Settings.
+
+AskWise does not buy anything, send messages or change accounts.
+
+## Setup
+
+Requirements: Node.js 22.13 or newer.
+
+```bash
+npm install
+cp .env.example .env      # then fill in the values below
+npm run build
+npm start                 # serves the app and the service on http://localhost:8787
+npm run invite            # prints a one-time sign-in code
+```
+
+### Environment variables
+
+| Name | Purpose |
+|---|---|
+| `OPENAI_API_KEY` | Research with OpenAI web search |
+| `NOTION_TOKEN` | Your Notion connection's secret |
+| `PORT` | Port for the app (default 8787) |
+| `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
+| `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-nano`) |
+| `ASKWISE_DATA_DIR` | Where AskWise keeps its database (default `./data`) |
+
+Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
+
+### Connect Notion
+
+1. In Notion, open **Settings → Connections → Develop or manage integrations** and create a connection with an API token.
+2. Give it **Read content** and **Insert content** only, and **No user information**.
+3. Put its token in `NOTION_TOKEN`.
+4. Open the Notion page AskWise should use, choose **⋯ → Connections** and add your connection. Pages inside it are included.
+5. In AskWise, go to **Settings → Notion**, press **Connect Notion**, then choose the page to read and the page to save reports inside.
+
+### Run on the glasses
+
+```bash
+npm start
+npx evenhub qr --url http://<your-computer-ip>:8787
+```
+
+Scan the code with the Even Realities app on a phone paired with your G2.
+
+### Run in the simulator
+
+```bash
+npm start
+npx evenhub-simulator http://localhost:8787
+```
+
+The simulator shows the phone page and the glasses display side by side.
+
+### Package for Even Hub
+
+```bash
+npm run pack
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs` and `scripts/simulator-checks.mjs` drive the full flow and the harder moments in the official simulator.
+
+## Demo
+
+[Watch the demo](media/askwise-demo.mp4): a real question typed on the phone, live research, the answer on the glasses, the full report and an approved save to Notion.
+
+## Project history
+
+AskWise started on November 23, 2026. Everything in this repository was written from that date. It builds on these open-source projects and tools:
+
+- [Even Hub SDK, CLI, simulator and templates](https://github.com/even-realities/evenhub-templates) by Even Realities
+- [`@evenrealities/pretext`](https://www.npmjs.com/package/@evenrealities/pretext) for text measuring on the glasses
+- [Hono](https://hono.dev) and `@hono/node-server`
+- [Vite](https://vite.dev), [TypeScript](https://www.typescriptlang.org), [Vitest](https://vitest.dev), [tsx](https://tsx.is)
+- [Geist and Geist Mono](https://vercel.com/font) typefaces via Fontsource
+- Node.js built-in SQLite
+- OpenAI Responses API with web search, and the Notion API
+
+## Team
+
+Built by [datwebguy](https://github.com/Datwebguy).

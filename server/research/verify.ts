@@ -23,7 +23,7 @@ const LIMITS = { answer: 90, bestOption: 40, reason: 110, drawback: 110, alterna
 /** Plain text for the glasses: no markdown, no emoji or symbols outside the basic planes, single spaces. */
 export function glassesText(text: string | null | undefined, max: number): string {
   if (!text) return ''
-  const clean = text
+  const clean = plain(text)
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/[*_`#>]/g, '')
     .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '')
@@ -35,8 +35,18 @@ export function glassesText(text: string | null | undefined, max: number): strin
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.-]+$/, '')}…`
 }
 
-function plain(text: string | null | undefined): string {
-  return (text ?? '').replace(/\s+/g, ' ').trim()
+// Wording about AskWise's own working notes is replaced with plain words for the reader.
+const PROCESS_WORDING: [RegExp, string][] = [
+  [/\b(?:the )?(?:captured|provided|research) (?:excerpts?|notes|snippets?|sources|data)\b/gi, 'the sources'],
+  [/\b(?:captured|provided) (?:in )?the notes\b/gi, 'in the sources'],
+  [/\bthe notes\b/gi, 'the sources'],
+  [/\bcaptured\s+/gi, ''],
+]
+
+export function plain(text: string | null | undefined): string {
+  let out = (text ?? '').replace(/\s+/g, ' ').trim()
+  for (const [re, to] of PROCESS_WORDING) out = out.replace(re, to)
+  return out.replace(/\bthe the sources\b/gi, 'the sources')
 }
 
 export function verifyReport(raw: RawReport, ctx: VerifyContext): Report {

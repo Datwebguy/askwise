@@ -64,7 +64,9 @@ export class Tracker {
       }
       let job: JobView | null = null
       if (id) job = await api.job(id).then(r => r.job).catch(() => null)
-      if (!job) job = (await api.latest()).job
+      const newest = (await api.latest()).job
+      // A newer request, for example one started on another device, takes over.
+      if (!job || (newest && newest.id !== job.id && newest.createdAt > job.createdAt)) job = newest
       let report = this.state.report
       if (job && REPORT_STATUSES.includes(job.status) && job.hasReport && (!report || this.state.job?.id !== job.id)) {
         report = (await api.report(job.id)).report
@@ -72,7 +74,9 @@ export class Tracker {
       if (!job || !job.hasReport) report = null
       this.failures = 0
       this.set({ signedIn: !!getToken(), job, report, offline: false, loading: false })
-      if (job && (ACTIVE_STATUSES.includes(job.status) || job.status === 'APPROVED_FOR_EXPORT')) this.schedule(2000)
+      const busy = job && (ACTIVE_STATUSES.includes(job.status) || job.status === 'APPROVED_FOR_EXPORT')
+      // Check often while research runs, and now and then otherwise, so changes made on another device show up.
+      this.schedule(busy ? 2000 : 8000)
     } catch (e) {
       if (e instanceof Unreachable) {
         this.failures += 1
