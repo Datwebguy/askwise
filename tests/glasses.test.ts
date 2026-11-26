@@ -83,6 +83,11 @@ describe('glasses screens', () => {
     }
   })
 
+  it('fits the whole research progress on one page', () => {
+    const s = researchingScreen(job({ status: 'RUNNING', stage: 'writing', hasReport: false, question: 'x '.repeat(200) }))
+    expect(paginateBody(s.body)).toHaveLength(1)
+  })
+
   it('splits long text into pages without losing words', () => {
     const long = Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')
     const pages = paginateBody(long)

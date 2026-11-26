@@ -67,7 +67,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     if (!res.ok) throw new Unreachable()
   }
   if (res.status === 401 && path !== '/api/session') {
-    setToken(null)
+    // Only sign out if this request used the current session; an older request must not undo a new sign-in.
+    if (getToken() === token) setToken(null)
     throw new AskWiseRefusal(MESSAGES.signInAgain, 401)
   }
   if (!res.ok) {
@@ -86,6 +87,7 @@ export interface Me {
 
 export const api = {
   signIn: (code: string) => request<{ token: string }>('POST', '/api/session', { code }),
+  deviceCode: () => request<{ code: string; minutes: number }>('POST', '/api/session/device-code'),
   signOut: () => request<{ ok: true }>('DELETE', '/api/session'),
   me: () => request<Me>('GET', '/api/me'),
   saveSettings: (s: Settings) => request<{ settings: Settings }>('PUT', '/api/settings', s),

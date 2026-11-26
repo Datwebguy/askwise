@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS invites (
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   used_at TEXT,
-  user_id TEXT
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,

@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { secureHeaders } from 'hono/secure-headers'
 import type { Db } from './db.ts'
-import { createSession, endSession, redeemInvite, userForToken } from './auth.ts'
+import { createInvite, endSession, redeemInvite, userForToken } from './auth.ts'
 import { log, record } from './activity.ts'
 import { MESSAGES } from '../shared/labels.ts'
 import { ACTIVE_STATUSES } from '../shared/types.ts'
@@ -98,10 +98,10 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ ok: true })
   })
 
-  /** Issues a second session for another device of the same person (for example the glasses app). */
-  app.post('/api/session/device', c => {
-    const s = createSession(db, c.get('userId'), deps.sessionDays)
-    return c.json({ token: s.token, expiresAt: s.expiresAt })
+  /** A short-lived, one-time code that signs the same person in on another device. */
+  app.post('/api/session/device-code', c => {
+    const code = createInvite(db, 0.25, c.get('userId'))
+    return c.json({ code, minutes: 15 })
   })
 
   // ---- Account and settings ------------------------------------------
