@@ -92,7 +92,14 @@ export function toNotionBlocks(lines: ExportLine[]): NotionBlock[] {
       case 'bullet':
         return { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: rich(line.text) } }
       case 'link':
-        return { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: rich(line.text, line.url) } }
+        // Notion accepts links up to 2000 characters; longer addresses are kept as text.
+        return {
+          object: 'block',
+          type: 'bulleted_list_item',
+          bulleted_list_item: {
+            rich_text: line.url && line.url.length <= 2000 ? rich(line.text, line.url) : rich(`${line.text} ${line.url ?? ''}`.trim()),
+          },
+        }
       default:
         return { object: 'block', type: 'paragraph', paragraph: { rich_text: rich(line.text) } }
     }

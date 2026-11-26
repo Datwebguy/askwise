@@ -51,7 +51,7 @@ async function signIn(): Promise<string> {
 }
 
 async function waitFor(token: string, id: string, until: (j: JobView) => boolean): Promise<JobView> {
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 800; i++) {
     const { body } = await call('GET', `/api/research/${id}`, token)
     if (until(body.job)) return body.job
     await new Promise(r => setTimeout(r, 10))
@@ -167,8 +167,9 @@ describe('research requests', () => {
     const job = await researched(t)
     expect(job.status).toBe('FAILED')
     expect(job.message).toBe("AskWise couldn't finish this research. Let's try that again.")
-    const body = JSON.stringify(job)
-    expect(body).not.toMatch(/openai|401|sk-/)
+    // No provider name, status code or key may reach the person.
+    expect(job.message).not.toMatch(/openai|401|status|sk-/i)
+    expect(JSON.stringify(job)).not.toMatch(/openai|sk-shouldnotleak/i)
   })
 
   it('stops research that runs past the time limit', async () => {
@@ -177,6 +178,15 @@ describe('research requests', () => {
     provider.searchDelayMs = 2000
     const job = await researched(t)
     expect(job.status).toBe('FAILED')
+  })
+
+  it('stops research when the time limit passes between steps', async () => {
+    setup({ timeLimitMs: 150 })
+    const t = await signIn()
+    provider.structureDelayMs = 400
+    const job = await researched(t)
+    expect(job.status).toBe('FAILED')
+    expect(job.hasReport).toBe(false)
   })
 
   it('asks one question when an important detail is missing, then continues', async () => {

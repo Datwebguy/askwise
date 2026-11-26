@@ -116,8 +116,11 @@ export class FixtureProvider implements ResearchProvider {
     if (this.failSearch) throw this.failSearch
     return FIXTURE_SEARCH
   }
+  structureDelayMs = 0
   async structure() {
     this.calls.push('structure')
+    // Ignores cancellation on purpose, like work that finishes after the time limit.
+    if (this.structureDelayMs) await new Promise(r => setTimeout(r, this.structureDelayMs))
     return this.raw
   }
 }
