@@ -15,6 +15,14 @@ Deadline: November 29, 2026, 19:59 UTC.
 
 The owner only has a phone and no laptop.
 
+## This is a long-term product
+
+AskWise is a real product that will keep growing after the first release. The event is only the first milestone. It is not the purpose of the product.
+
+- Build it as a long-term product: clean structure, modular code, clear names, and room to add more research types and more connected apps later.
+- Keep the full product vision from docs/01 in mind while building the first version.
+- The planning documents in docs/ (hackathon rules, competitor research, deadlines) are internal working notes. Keep and use them during the build. They are not part of the product.
+
 ## Owner rules (these override anything in the other documents)
 
 1. **No hard-coded data and no fake data anywhere.** Not in the app, the API, the glasses screens, the phone report, the README or the demo. Every result must come from a real call (OpenAI web search, Notion). No mock responses, no placeholder results, no seeded or "demo mode" data, no backup demo data. Test fixtures may exist only inside test files and must be clearly labelled as fixtures. If a real call fails or a key is missing, tell the owner about the blocker. Never replace it with made-up output.
@@ -31,11 +39,12 @@ The owner only has a phone and no laptop.
    - Show a screenshot of each screen.
    - Show the real Notion page that was created.
    - Search the code for TODO, placeholder, mock, fake, lorem and hard-coded results, and show that none remain.
-   - Search the product files for the words "hackathon" and for developer words (see rule 7), and show that none remain.
+   - Search the product files (app code, screens, phone pages, README) for the words "hackathon" and for developer words (see rule 7), and show that none remain. The planning documents in docs/ are not searched for this.
 
    At the end, give the owner a completion audit: every requirement in docs/10 and docs/11, with the evidence for each. Tell the owner honestly, in chat, about anything unfinished.
 
-6. **No hackathon wording in the build.** The words "hackathon", "judges", "track", "submission", "prize" and "deadline" must not appear in the app screens, the glasses screens, the phone pages, the code, code comments, the README, the screenshots or the demo video. Hackathon information is used only in the official submission form on the event page.
+6. **No hackathon wording in the product.** The words "hackathon", "judges", "track", "submission", "prize" and "deadline" must not appear in anything that belongs to the product: the app screens, the glasses screens, the phone pages, the code, code comments, the README, the screenshots or the demo video. Hackathon information is used only in the official submission form on the event page.
+   - The planning documents in docs/ keep their hackathon details during the build. The agents need them. Do not delete or edit them until the owner asks for the final cleanup (rule 9).
    - The README must still show what existed before the project started. Do this with a neutral "Project history" section: the project started on November 23, 2026, and it lists the open-source libraries and tools used. Do not use the word hackathon.
 
 7. **No developer wording in the user interface.** Everything a user sees must be plain, everyday language, for glasses and phone. Never show these words or anything like them: API, JSON, backend, server, token, key, endpoint, SDK, WebView, simulator, job, queue, status codes, stack traces, IDs, "null", "undefined", "error 500".
@@ -55,9 +64,13 @@ The owner only has a phone and no laptop.
    - Do not show or mention voice input unless it really works end to end.
    - Problems, limits and unfinished work go to the owner privately in chat. They never go into the product or the public repository.
 
-9. **Public repository cleanup at the end.** The final public repository must be product-only:
-   - Rewrite README.md for the product: what AskWise does, how to use it, how to set it up, the Project history section from rule 6. No hackathon information, no limitations section.
-   - Move the internal planning documents in docs/ (they mention the hackathon, rules, competitors and limits) out of the public repository. Ask the owner where to keep them before moving anything.
+9. **Final cleanup, only when the owner asks.** Do not start this earlier. When the owner says the build is finished and asks for the cleanup:
+   - Remove the files the product does not need (the planning documents about the event, competitor research, internal reports, test leftovers). Ask the owner where to keep copies before removing anything.
+   - Rewrite README.md for the product: what AskWise does, who it is for, how to use it, how to set it up, and the Project history section from rule 6. No event information and no limitations section.
+   - Write the product documents well: clear, simple language, in a sensible order.
+   - Organise the repository into a clean, well-structured layout: folders with clear names, consistent file names, no unused code, no dead files, no stray scripts.
+   - Check the code is tidy and consistent, and that every file has a clear purpose.
+   - Run the tests and the simulator again after the cleanup and show the results.
 
 ## Correction to the other documents: the simulator can run in the sandbox
 
@@ -98,5 +111,6 @@ Write your plan from the documents first. Then build in this order:
 6. Tests.
 7. Demo recording.
 8. README and submission text.
+9. Final cleanup, only when the owner asks (rule 9).
 
 While the backend is not ready, screens may show empty or loading states. They must never show invented results.
