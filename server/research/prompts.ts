@@ -65,6 +65,7 @@ Rules:
 - Write for a normal reader. Never mention the notes, excerpts, "captured" data or the research process; just state what was found.
 - glasses: written for a tiny display. answer is one plain sentence that directly answers the question, at most 90 characters; bestOption at most 40 characters or null; reason at most 110 characters; drawback at most 110 characters; up to 3 alternatives of at most 40 characters each. Plain text only, no markdown, no emoji.
 - recommendation: if there is no clear winner, set noClearWinner to true and choice to null, and say why.
+- title: a short headline of at most 7 words, for example "MacBook Air M4 vs XPS 13 vs Zenbook 14".
 - summary: 2 to 4 plain sentences for the phone.
 - missingInfo: what could not be found or confirmed.
 - followUps: 2 or 3 useful next questions.
