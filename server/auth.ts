@@ -12,16 +12,17 @@ export function normaliseCode(code: string): string {
 }
 
 /** Creates a one-time code. With a userId it signs that same person in on another device. */
-export function createInvite(db: Db, hoursValid = 72, userId: string | null = null): string {
+export function createInvite(db: Db, hoursValid = 72, userId: string | null = null, makeOwner = false): string {
   const bytes = crypto.randomBytes(10)
   const code = Array.from(bytes, b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
   const created = new Date()
   const expires = new Date(created.getTime() + hoursValid * 3600_000)
-  db.prepare('INSERT INTO invites (code_hash, created_at, expires_at, user_id) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO invites (code_hash, created_at, expires_at, user_id, make_owner) VALUES (?, ?, ?, ?, ?)').run(
     sha256(code),
     created.toISOString(),
     expires.toISOString(),
     userId,
+    makeOwner ? 1 : 0,
   )
   return `${code.slice(0, 5)}-${code.slice(5)}`
 }
@@ -36,8 +37,8 @@ export interface Session {
 export function redeemInvite(db: Db, code: string, sessionDays: number): Session | null {
   const hash = sha256(normaliseCode(code))
   return tx(db, () => {
-    const row = db.prepare('SELECT expires_at, used_at, user_id FROM invites WHERE code_hash = ?').get(hash) as
-      | { expires_at: string; used_at: string | null; user_id: string | null }
+    const row = db.prepare('SELECT expires_at, used_at, user_id, make_owner FROM invites WHERE code_hash = ?').get(hash) as
+      | { expires_at: string; used_at: string | null; user_id: string | null; make_owner: number }
       | undefined
     if (!row || row.used_at || row.expires_at < now()) return null
     let userId = row.user_id
@@ -48,8 +49,23 @@ export function redeemInvite(db: Db, code: string, sessionDays: number): Session
       db.prepare('INSERT INTO users (id, created_at) VALUES (?, ?)').run(userId, now())
     }
     db.prepare('UPDATE invites SET used_at = ?, user_id = ? WHERE code_hash = ?').run(now(), userId, hash)
+    if (row.make_owner) db.prepare('UPDATE users SET is_owner = 1 WHERE id = ?').run(userId)
     return createSession(db, userId, sessionDays)
   })
+}
+
+/** Starts a new private space for someone who just opened AskWise. No code or account details needed. */
+export function createGuest(db: Db, sessionDays: number): Session {
+  return tx(db, () => {
+    const userId = crypto.randomUUID()
+    db.prepare('INSERT INTO users (id, created_at) VALUES (?, ?)').run(userId, now())
+    return createSession(db, userId, sessionDays)
+  })
+}
+
+export function isOwner(db: Db, userId: string): boolean {
+  const row = db.prepare('SELECT is_owner FROM users WHERE id = ?').get(userId) as { is_owner: number } | undefined
+  return row?.is_owner === 1
 }
 
 export function createSession(db: Db, userId: string, sessionDays: number): Session {

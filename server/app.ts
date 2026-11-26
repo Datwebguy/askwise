@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { secureHeaders } from 'hono/secure-headers'
 import type { Db } from './db.ts'
-import { createInvite, endSession, redeemInvite, userForToken } from './auth.ts'
+import { createGuest, createInvite, endSession, isOwner, redeemInvite, userForToken } from './auth.ts'
 import { log, record } from './activity.ts'
 import { MESSAGES } from '../shared/labels.ts'
 import { ACTIVE_STATUSES } from '../shared/types.ts'
@@ -21,6 +21,7 @@ export interface AppDeps {
   notion: NotionService
   sessionDays: number
   researchPerHour: number
+  researchPerDay: number
   maxActivePerUser: number
 }
 
@@ -37,6 +38,8 @@ const NOTION_MESSAGES: Record<NotionRefusal, { status: 400 | 404 | 409; message:
   not_found: { status: 404, message: MESSAGES.notFound },
   in_progress: { status: 409, message: 'Saving is already in progress.' },
   rejected: { status: 409, message: 'You chose not to save this. Review it again to save.' },
+  owner_only: { status: 409, message: 'Use "Connect Notion" to link your own workspace.' },
+  sign_in_failed: { status: 400, message: "Notion didn't finish connecting. Please try again." },
 }
 
 const COUNTRY_RE = /^[\p{L} .'-]{2,56}$/u
@@ -46,6 +49,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
   const { db, engine, notion } = deps
   const app = new Hono<Env>()
   const signInLimiter = new AttemptLimiter(10, 15 * 60_000)
+  const guestLimiter = new AttemptLimiter(30, 60 * 60_000)
+  const clientKey = (c: Context) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
 
   app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: undefined }))
   app.use('/api/*', bodyLimit({ maxSize: 32 * 1024, onError: c => c.json({ message: MESSAGES.checkInput }, 413) }))
@@ -64,8 +69,30 @@ export function createApp(deps: AppDeps): Hono<Env> {
   })
 
   // ---- Session -------------------------------------------------------
+  /** Opens AskWise instantly: a new private space for this device, with no code or details to enter. */
+  app.post('/api/session/guest', c => {
+    if (!guestLimiter.allow(clientKey(c))) return c.json({ message: 'Too many new visits from here. Please wait a little.' }, 429)
+    const session = createGuest(db, deps.sessionDays)
+    record(db, session.userId, 'sign_in', 'instant')
+    return c.json({ token: session.token, expiresAt: session.expiresAt })
+  })
+
+  /** Notion sends people back here after they approve the connection. */
+  app.get('/api/integrations/notion/callback', async c => {
+    const code = c.req.query('code')
+    const state = c.req.query('state')
+    if (!code || !state) return c.redirect('/#/settings/notion-declined')
+    try {
+      await notion.finishSignIn(state, code)
+      return c.redirect('/#/settings/notion-connected')
+    } catch (e) {
+      log(`notion sign-in: ${(e as Error).message}`)
+      return c.redirect('/#/settings/notion-declined')
+    }
+  })
+
   app.post('/api/session', async c => {
-    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
+    const ip = clientKey(c)
     if (!signInLimiter.allow(ip)) return c.json({ message: 'Too many tries. Please wait a few minutes.' }, 429)
     const body = await readJson(c)
     const code = typeof body.code === 'string' ? body.code : ''
@@ -80,7 +107,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
   })
 
   app.use('/api/*', async (c, next) => {
-    if (c.req.path === '/api/session' && c.req.method === 'POST') return next()
+    if (c.req.method === 'POST' && (c.req.path === '/api/session' || c.req.path === '/api/session/guest')) return next()
+    if (c.req.method === 'GET' && c.req.path === '/api/integrations/notion/callback') return next()
     const auth = c.req.header('authorization') ?? ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
     const userId = userForToken(db, token)
@@ -111,6 +139,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
       settings: getSettings(db, userId),
       researchAvailable: engine.available,
       notionAvailable: notion.configured,
+      notionSignIn: notion.oauthAvailable,
+      notionShared: notion.sharedPage,
+      isOwner: isOwner(db, userId),
       notion: notion.view(userId),
     })
   })
@@ -154,6 +185,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (jobs.countActive(db, userId) >= deps.maxActivePerUser) return c.json({ message: MESSAGES.tooMany }, 429)
     const hourAgo = new Date(Date.now() - 3600_000).toISOString()
     if (jobs.countSince(db, userId, hourAgo) >= deps.researchPerHour) return c.json({ message: MESSAGES.busy }, 429)
+    const dayStart = new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()
+    if (jobs.countAllSince(db, dayStart) >= deps.researchPerDay) return c.json({ message: MESSAGES.dailyLimit }, 429)
 
     const useNotion = body.useNotion === true && notion.view(userId).readPage !== null
     const row = jobs.createJob(db, userId, question, useNotion, requestKey)
@@ -226,6 +259,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.get('/api/integrations', c => c.json({ integrations: [notion.view(c.get('userId'))], notionAvailable: notion.configured }))
 
   app.post('/api/integrations/notion/connect', async c => c.json({ notion: await notion.connect(c.get('userId')) }))
+
+  /** Returns the Notion sign-in address for "Connect Notion". */
+  app.post('/api/integrations/notion/sign-in', c => c.json({ url: notion.startSignIn(c.get('userId')) }))
 
   app.get('/api/integrations/notion/pages', async c => c.json({ pages: await notion.pages(c.get('userId')) }))
 

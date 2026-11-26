@@ -79,11 +79,32 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 `
 
+// Columns added after the first release. Each is added once if missing.
+const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
+  ['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0'],
+  ['invites', 'make_owner', 'INTEGER NOT NULL DEFAULT 0'],
+  ['connections', 'mode', "TEXT NOT NULL DEFAULT 'owner'"],
+  ['connections', 'token_enc', 'TEXT'],
+]
+
+const LATER_TABLES = `
+CREATE TABLE IF NOT EXISTS oauth_states (
+  state TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL
+);
+`
+
 export function openDb(file: string): Db {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA)
+  for (const [table, column, definition] of ADDED_COLUMNS) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some(c => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
+  db.exec(LATER_TABLES)
   return db
 }
 

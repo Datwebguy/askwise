@@ -165,6 +165,8 @@ export interface ConnectionView {
   readPage: NotionPageChoice | null
   destinationPage: NotionPageChoice | null
   needsReconnect: boolean
+  /** How this connection was made: the owner's service connection, or the person's own Notion sign-in. */
+  mode: 'owner' | 'oauth' | null
 }
 
 export interface ExportPreview {
@@ -176,6 +178,8 @@ export interface ExportPreview {
   lines: { kind: 'heading' | 'paragraph' | 'bullet' | 'link'; text: string; url?: string }[]
   contentHash: string
   privateInfo: string[]
+  /** True when the report goes to the public shared page rather than the person's own Notion. */
+  shared: boolean
   alreadySaved: { url: string; at: string } | null
 }
 

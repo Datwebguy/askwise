@@ -56,27 +56,38 @@ function notice(text: string, kind: 'info' | 'warn' = 'info'): string {
   return `<p class="notice ${kind}" role="status">${esc(text)}</p>`
 }
 
-// ---- Sign in -----------------------------------------------------------
-function renderSignIn(root: HTMLElement, message = ''): void {
+// ---- Starting -----------------------------------------------------------
+/** Shown only if AskWise could not open a space for this device, or for a sign-in code link that did not work. */
+function renderStart(root: HTMLElement, message = ''): void {
   root.innerHTML = `
     <main class="signin stagger">
       <div class="signin-mark">${logo(56)}</div>
       <h1>Know what to choose.</h1>
-      <p class="lead" style="margin-bottom:28px">AskWise reads the web for you, checks the sources and gives you a straight answer on your glasses.</p>
-      <form id="signin">
-        <label for="code">Sign-in code</label>
-        <input id="code" class="code-input" name="code" autocomplete="one-time-code" autocapitalize="characters" required minlength="6" maxlength="40" />
-        <div class="row"><button class="primary" type="submit" style="width:100%">Continue</button></div>
-        <p id="msg" class="small" role="status">${esc(message)}</p>
-      </form>
+      <p class="lead" style="margin-bottom:24px">AskWise reads the web for you, checks the sources and gives you a straight answer on your glasses.</p>
+      ${message ? notice(message, 'warn') : ''}
+      <div class="row"><button id="start" class="primary" style="width:100%">Start</button></div>
+      <details style="margin-top:22px"><summary>I have a code from another device</summary>
+        <form id="signin">
+          <label for="code">Code</label>
+          <input id="code" class="code-input" name="code" autocomplete="one-time-code" autocapitalize="characters" required minlength="6" maxlength="40" />
+          <div class="row"><button class="ghost" type="submit">Continue</button></div>
+        </form>
+      </details>
+      <p id="msg" class="small" role="status"></p>
     </main>`
+  $(root, '#start').addEventListener('click', async () => {
+    $(root, '#msg').textContent = 'Opening…'
+    try {
+      setToken((await api.startInstantly()).token)
+    } catch (err) {
+      $(root, '#msg').textContent = friendly(err)
+    }
+  })
   $(root, '#signin').addEventListener('submit', async e => {
     e.preventDefault()
-    const code = ($(root, '#code') as HTMLInputElement).value
-    $(root, '#msg').textContent = 'Signing in…'
+    $(root, '#msg').textContent = 'Opening…'
     try {
-      const { token } = await api.signIn(code)
-      setToken(token)
+      setToken((await api.signIn(($(root, '#code') as HTMLInputElement).value)).token)
       location.hash = '#/'
     } catch (err) {
       $(root, '#msg').textContent = friendly(err)
@@ -207,7 +218,9 @@ async function renderReport(root: HTMLElement, id: string): Promise<void> {
   root.innerHTML = shell('report', '<p class="small">Opening report…</p>')
   try {
     const { job, report } = await api.report(id)
-    $(root, '#view').innerHTML = reportHtml(job, report)
+    const n = me?.notion
+    const canSave = !!me && ((!!n?.connected && !n.needsReconnect) || !!me.notionShared)
+    $(root, '#view').innerHTML = reportHtml(job, report, canSave)
     on(root, '[data-tab]', 'click', (_e, el) => {
       root.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === el))
       root.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('active', (p as HTMLElement).dataset.panel === el.dataset.tab))
@@ -329,14 +342,19 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
   const options = (selected: string | null) =>
     `<option value="">None</option>${pages.map(p => `<option value="${esc(p.id)}" ${p.id === selected ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}`
 
+  const shared = me.notionShared
+  const sharedLine = shared
+    ? `<p class="small">Without connecting, you can still save reports to the public page “${esc(shared.title)}”${shared.url ? `. <a href="${safeHref(shared.url)}" target="_blank" rel="noopener">Open it</a>` : ''}.</p>`
+    : ''
+  const connectButton = me.notionSignIn || me.isOwner ? '<button id="connect" class="primary">Connect Notion</button>' : ''
   const notionSection = !me.notionAvailable
     ? '<p>Notion is being set up for AskWise.</p>'
     : !n.connected
-      ? `<p>Connect Notion so AskWise can read a page you choose and save reports you approve.</p>
-         <p class="small">AskWise only sees the pages you share with the AskWise connection in Notion.</p>
-         <button id="connect" class="primary">Connect Notion</button>`
+      ? `${connectButton ? '<p>Connect your Notion so AskWise can read a page you choose and save the reports you approve.</p>' : ''}
+         ${connectButton}
+         ${sharedLine}`
       : me.notion.needsReconnect
-        ? `${notice(MESSAGES.notionReconnect, 'warn')}<button id="connect" class="primary">Connect again</button>
+        ? `${notice(MESSAGES.notionReconnect, 'warn')}${connectButton}
            <button id="disconnect" class="ghost">Disconnect</button>`
         : `<p>Connected to <strong>${esc(n.workspaceName ?? 'Notion')}</strong>.</p>
            ${pagesMessage ? notice(pagesMessage, 'warn') : ''}
@@ -366,9 +384,8 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
     <section class="card"><h2>Notion</h2>${notionSection}</section>
     <section class="card">
       <h2>Your data</h2>
-      <p class="small">AskWise keeps your questions and reports until you delete them.</p>
-      <div class="row"><button id="devicecode" class="ghost">Sign in on another device</button>
-      <button id="signout" class="ghost">Sign out</button>
+      <p class="small">Your questions and reports are private to this device. AskWise keeps them until you delete them.</p>
+      <div class="row"><button id="devicecode" class="ghost">Use on another device</button>
       <button id="delete" class="danger">Delete everything</button></div>
     </section>`
 
@@ -386,7 +403,15 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
     const currency = ($(view, '#currency') as HTMLInputElement).value.trim().toUpperCase() || null
     void run(() => api.saveSettings({ country, currency }), 'Saved.')
   })
-  root.querySelector('#connect')?.addEventListener('click', () => void run(() => api.connectNotion(), 'Notion is connected.'))
+  root.querySelector('#connect')?.addEventListener('click', async () => {
+    if (me?.isOwner && !me.notionSignIn) return void run(() => api.connectNotion(), 'Notion is connected.')
+    try {
+      // Notion's own sign-in page: the person picks the pages AskWise may use, then comes back here.
+      location.href = (await api.notionSignIn()).url
+    } catch (err) {
+      await renderSettings(root, friendly(err))
+    }
+  })
   root.querySelector('#disconnect')?.addEventListener('click', () => {
     if (confirm('Disconnect Notion? AskWise will stop reading and saving pages.')) {
       void run(() => api.disconnectNotion(), 'Notion is disconnected.')
@@ -406,11 +431,6 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
     } catch (err) {
       alert(friendly(err))
     }
-  })
-  root.querySelector('#signout')?.addEventListener('click', async () => {
-    await api.signOut().catch(() => undefined)
-    setToken(null)
-    location.hash = '#/'
   })
   root.querySelector('#delete')?.addEventListener('click', async () => {
     if (!confirm('Delete all your AskWise research, settings and connections? This cannot be undone.')) return
@@ -432,15 +452,23 @@ export async function route(root: HTMLElement): Promise<void> {
     try {
       setToken((await api.signIn(link[1])).token)
     } catch (err) {
-      return renderSignIn(root, friendly(err))
+      return renderStart(root, friendly(err))
     }
   }
-  if (!getToken()) return renderSignIn(root)
+  if (!getToken()) {
+    // Open straight away: a private space for this device, with nothing to type.
+    try {
+      setToken((await api.startInstantly()).token)
+      return
+    } catch (err) {
+      return renderStart(root, friendly(err))
+    }
+  }
   if (!me) {
     try {
       me = await api.me()
     } catch (err) {
-      if (!getToken()) return renderSignIn(root, friendly(err))
+      if (!getToken()) return renderStart(root, friendly(err))
     }
   }
   const hash = location.hash.replace(/^#/, '') || '/'
@@ -448,7 +476,11 @@ export async function route(root: HTMLElement): Promise<void> {
   if (section === 'report' && id) return renderReport(root, id)
   if (section === 'save' && id) return renderSave(root, id)
   if (section === 'history') return renderHistory(root)
-  if (section === 'settings') return renderSettings(root)
+  if (section === 'settings') {
+    if (id === 'notion-connected') return renderSettings(root, 'Notion is connected. Choose the pages AskWise may use.')
+    if (id === 'notion-declined') return renderSettings(root, "Notion didn't finish connecting. You can try again.")
+    return renderSettings(root)
+  }
   return renderAsk(root)
 }
 
