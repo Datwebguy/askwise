@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkClaim, glassesText, needsReview, verifyReport } from '../server/research/verify.ts'
+import { checkClaim, glassesText, needsReview, plain, verifyReport } from '../server/research/verify.ts'
 import { numberSources, normaliseUrl } from '../server/research/sources.ts'
 import { PRICE_UNCONFIRMED } from '../shared/labels.ts'
 import { FIXTURE_SEARCH, fixtureRawReport } from './fixtures/research.ts'
@@ -134,6 +134,14 @@ describe('glasses text', () => {
     expect(t).not.toMatch(/[*[\]🚀]/u)
     expect(t.length).toBeLessThanOrEqual(30)
     expect(t.startsWith('Best pick is A')).toBe(true)
+  })
+})
+
+describe('reader wording', () => {
+  it('replaces talk of working notes with plain words', () => {
+    expect(plain('Not stated in the captured excerpts.')).toBe('Not stated in the sources.')
+    expect(plain('Only the claim in the provided notes is sourced.')).toBe('Only the claim in the sources is sourced.')
+    expect(plain('A captured Best Buy listing')).toBe('A Best Buy listing')
   })
 })
 

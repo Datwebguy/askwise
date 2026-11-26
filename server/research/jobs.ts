@@ -30,18 +30,18 @@ export function findByRequestKey(db: Db, userId: string, key: string): JobRow | 
 }
 
 export function findActiveSameQuestion(db: Db, userId: string, question: string): JobRow | null {
-  const placeholders = ACTIVE_STATUSES.map(() => '?').join(',')
+  const marks = ACTIVE_STATUSES.map(() => '?').join(',')
   return (
     (db
-      .prepare(`SELECT * FROM research_jobs WHERE user_id = ? AND question = ? AND status IN (${placeholders}) ORDER BY created_at DESC LIMIT 1`)
+      .prepare(`SELECT * FROM research_jobs WHERE user_id = ? AND question = ? AND status IN (${marks}) ORDER BY created_at DESC LIMIT 1`)
       .get(userId, question, ...ACTIVE_STATUSES) as JobRow | undefined) ?? null
   )
 }
 
 export function countActive(db: Db, userId: string): number {
-  const placeholders = ACTIVE_STATUSES.map(() => '?').join(',')
+  const marks = ACTIVE_STATUSES.map(() => '?').join(',')
   const row = db
-    .prepare(`SELECT COUNT(*) AS n FROM research_jobs WHERE user_id = ? AND status IN (${placeholders})`)
+    .prepare(`SELECT COUNT(*) AS n FROM research_jobs WHERE user_id = ? AND status IN (${marks})`)
     .get(userId, ...ACTIVE_STATUSES) as { n: number }
   return row.n
 }
@@ -84,10 +84,10 @@ export function setStatus(
   status: JobStatus,
   fields: { stage?: ResearchStage | null; message?: string | null } = {},
 ): boolean {
-  const placeholders = TERMINAL.map(() => '?').join(',')
+  const marks = TERMINAL.map(() => '?').join(',')
   const res = db
     .prepare(
-      `UPDATE research_jobs SET status = ?, stage = ?, message = ?, updated_at = ? WHERE id = ? AND status NOT IN (${placeholders})`,
+      `UPDATE research_jobs SET status = ?, stage = ?, message = ?, updated_at = ? WHERE id = ? AND status NOT IN (${marks})`,
     )
     .run(status, fields.stage ?? null, fields.message ?? null, now(), id, ...TERMINAL)
   return Number(res.changes) > 0
@@ -159,9 +159,9 @@ export function toView(row: JobRow, exported: { url: string; at: string } | null
 
 /** Jobs that were running when the service stopped cannot resume; mark them so the person can ask again. */
 export function markInterrupted(db: Db, message: string): number {
-  const placeholders = ACTIVE_STATUSES.map(() => '?').join(',')
+  const marks = ACTIVE_STATUSES.map(() => '?').join(',')
   const res = db
-    .prepare(`UPDATE research_jobs SET status = 'FAILED', stage = NULL, message = ?, updated_at = ? WHERE status IN (${placeholders})`)
+    .prepare(`UPDATE research_jobs SET status = 'FAILED', stage = NULL, message = ?, updated_at = ? WHERE status IN (${marks})`)
     .run(message, now(), ...ACTIVE_STATUSES)
   return Number(res.changes)
 }
