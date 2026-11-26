@@ -94,6 +94,16 @@ describe('sign in and sessions', () => {
     expect(last).toBe(429)
   })
 
+  it('signs the same person in on another device with a one-time code', async () => {
+    const phone = await signIn()
+    const job = await researched(phone)
+    const { body } = await call('POST', '/api/session/device-code', phone)
+    const second = await call('POST', '/api/session', undefined, { code: body.code })
+    expect(second.status).toBe(200)
+    expect((await call('GET', `/api/research/${job.id}`, second.body.token)).status).toBe(200)
+    expect((await call('POST', '/api/session', undefined, { code: body.code })).status).toBe(401)
+  })
+
   it('ends a session on sign out', async () => {
     const t = await signIn()
     await call('DELETE', '/api/session', t)

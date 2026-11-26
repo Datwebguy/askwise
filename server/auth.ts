@@ -11,15 +11,17 @@ export function normaliseCode(code: string): string {
   return code.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
-export function createInvite(db: Db, hoursValid = 72): string {
+/** Creates a one-time code. With a userId it signs that same person in on another device. */
+export function createInvite(db: Db, hoursValid = 72, userId: string | null = null): string {
   const bytes = crypto.randomBytes(10)
   const code = Array.from(bytes, b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
   const created = new Date()
   const expires = new Date(created.getTime() + hoursValid * 3600_000)
-  db.prepare('INSERT INTO invites (code_hash, created_at, expires_at) VALUES (?, ?, ?)').run(
+  db.prepare('INSERT INTO invites (code_hash, created_at, expires_at, user_id) VALUES (?, ?, ?, ?)').run(
     sha256(code),
     created.toISOString(),
     expires.toISOString(),
+    userId,
   )
   return `${code.slice(0, 5)}-${code.slice(5)}`
 }
@@ -34,12 +36,17 @@ export interface Session {
 export function redeemInvite(db: Db, code: string, sessionDays: number): Session | null {
   const hash = sha256(normaliseCode(code))
   return tx(db, () => {
-    const row = db.prepare('SELECT expires_at, used_at FROM invites WHERE code_hash = ?').get(hash) as
-      | { expires_at: string; used_at: string | null }
+    const row = db.prepare('SELECT expires_at, used_at, user_id FROM invites WHERE code_hash = ?').get(hash) as
+      | { expires_at: string; used_at: string | null; user_id: string | null }
       | undefined
     if (!row || row.used_at || row.expires_at < now()) return null
-    const userId = crypto.randomUUID()
-    db.prepare('INSERT INTO users (id, created_at) VALUES (?, ?)').run(userId, now())
+    let userId = row.user_id
+    if (userId) {
+      if (!db.prepare('SELECT id FROM users WHERE id = ?').get(userId)) return null
+    } else {
+      userId = crypto.randomUUID()
+      db.prepare('INSERT INTO users (id, created_at) VALUES (?, ?)').run(userId, now())
+    }
     db.prepare('UPDATE invites SET used_at = ?, user_id = ? WHERE code_hash = ?').run(now(), userId, hash)
     return createSession(db, userId, sessionDays)
   })

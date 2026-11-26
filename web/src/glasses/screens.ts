@@ -45,7 +45,7 @@ export function researchingScreen(job: JobView): Screen {
   })
   return {
     title: 'Researching',
-    body: `${truncate(job.question, 90)}\n\n${lines.join('\n')}`,
+    body: `${truncate(job.question, 56)}\n\n${lines.join('\n')}`,
     footer: HINT_WAIT,
   }
 }

@@ -341,7 +341,8 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
     <section class="card">
       <h2>Your data</h2>
       <p class="small">AskWise keeps your questions and reports until you delete them.</p>
-      <div class="row"><button id="signout" class="ghost">Sign out</button>
+      <div class="row"><button id="devicecode" class="ghost">Sign in on another device</button>
+      <button id="signout" class="ghost">Sign out</button>
       <button id="delete" class="danger">Delete everything</button></div>
     </section>`
 
@@ -371,6 +372,15 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
     const dest = ($(view, '#destPage') as HTMLSelectElement).value || null
     void run(() => api.chooseNotionPages(read, dest), 'Your Notion pages are saved.')
   })
+  root.querySelector('#devicecode')?.addEventListener('click', async e => {
+    const btn = e.currentTarget as HTMLElement
+    try {
+      const { code, minutes } = await api.deviceCode()
+      btn.outerHTML = `<p class="notice info" style="width:100%">Enter <strong class="mono">${esc(code)}</strong> on your other device. It works once, for ${minutes} minutes.</p>`
+    } catch (err) {
+      alert(friendly(err))
+    }
+  })
   root.querySelector('#signout')?.addEventListener('click', async () => {
     await api.signOut().catch(() => undefined)
     setToken(null)
@@ -390,6 +400,15 @@ async function renderSettings(root: HTMLElement, message = ''): Promise<void> {
 
 // ---- Router ------------------------------------------------------------
 export async function route(root: HTMLElement): Promise<void> {
+  const link = location.hash.match(/^#\/code\/([A-Za-z0-9-]{6,40})$/)
+  if (link) {
+    history.replaceState(null, '', location.pathname)
+    try {
+      setToken((await api.signIn(link[1])).token)
+    } catch (err) {
+      return renderSignIn(root, friendly(err))
+    }
+  }
   if (!getToken()) return renderSignIn(root)
   if (!me) {
     try {

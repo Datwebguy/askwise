@@ -60,6 +60,7 @@ Rules:
 - Claim status: VERIFIED = one reliable source supports it; CORROBORATED = two or more independent sources support it; CONFLICTING = sources disagree; UNVERIFIED = not enough evidence; OUTDATED = the information is old; INFERRED = your own conclusion from the facts (no source needed). Include 4 to 10 important claims, and include at least one INFERRED claim for the recommendation.
 - Prices: include a price only when the notes give its amount, currency, shop and source. Otherwise leave prices empty. Use a 3-letter currency code. amount is a number without symbols.
 - products: one entry per exact model, with the variant spelled out (for example memory and storage). Leave products empty when the question is not about products.
+- specs: use the same spec names for every product (for example "Battery life", "Weight", "Display", "Memory", "Storage", "Processor") so products can be compared side by side.
 - reviews: for each product, add the expert reviews, lab tests, customer reviews or discussions the notes mention, each with its source.
 - conflicts: only where two sources give different values or opinions about the same thing. Do not list gaps here; gaps go in missingInfo.
 - Write for a normal reader. Never mention the notes, excerpts, "captured" data or the research process; just state what was found.
