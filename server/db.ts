@@ -237,7 +237,9 @@ export async function openPostgresPool(pool: PgPool): Promise<Db> {
 }
 
 export async function openPostgres(url: string): Promise<Db> {
-  const { Pool } = await import('@neondatabase/serverless')
+  // Neon needs its own driver; any other Postgres host uses the standard one.
+  const onNeon = /(^|[.@])neon\.tech([:/?]|$)/.test(url)
+  const { Pool } = onNeon ? await import('@neondatabase/serverless') : (await import('pg')).default
   return openPostgresPool(new Pool({ connectionString: url }) as unknown as PgPool)
 }
 
