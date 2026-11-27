@@ -512,6 +512,15 @@ describe('instant access', () => {
     expect(r.status).toBe(200)
     expect(notionServer.created).toHaveLength(1)
     expect(notionServer.created[0].parentId).toBe(SHARED_PAGE)
+    // The link goes to the published copy, so a visitor without Notion can open it.
+    expect(r.body.url).toBe('https://notion.example/created1')
+  })
+
+  it('lets the packaged glasses app reach the service from its own origin', async () => {
+    const pre = await app.request('/api/me', { method: 'OPTIONS', headers: { Origin: 'app://askwise', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } })
+    expect(pre.headers.get('access-control-allow-origin')).toBe('*')
+    expect(pre.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('authorization')
+    expect(pre.headers.get('access-control-allow-credentials')).toBeNull()
   })
 
   it('refuses to save when there is no shared page and no connection', async () => {

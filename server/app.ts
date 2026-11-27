@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { secureHeaders } from 'hono/secure-headers'
+import { cors } from 'hono/cors'
 import type { Db } from './db.ts'
 import { createGuest, createInvite, endSession, isOwner, redeemInvite, userForToken } from './auth.ts'
 import { log, record } from './activity.ts'
@@ -58,7 +59,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
   const guestLimiter = new AttemptLimiter(30, 60 * 60_000)
   const clientKey = (c: Context) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
 
-  app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: undefined }))
+  app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: 'cross-origin', contentSecurityPolicy: undefined }))
+  // The packaged glasses app runs from its own origin. Sign-in uses a bearer token, never cookies.
+  app.use('/api/*', cors({ origin: '*', allowHeaders: ['Authorization', 'Content-Type'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE'], maxAge: 86400 }))
   const smallBodies = bodyLimit({ maxSize: 32 * 1024, onError: c => c.json({ message: MESSAGES.checkInput }, 413) })
   const voiceBodies = bodyLimit({ maxSize: 1024 * 1024, onError: c => c.json({ message: 'That was a bit long. Please keep it under 15 seconds.' }, 413) })
   app.use('/api/*', (c, next) => (c.req.path === '/api/voice' ? voiceBodies(c, next) : smallBodies(c, next)))

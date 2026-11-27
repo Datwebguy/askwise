@@ -8,6 +8,13 @@
   "entrypoint": "index.html",
   "permissions": [
     {
+      "name": "network",
+      "desc": "Sends your questions to AskWise for research and brings back the answer.",
+      "whitelist": [
+        "https://askwise-production-b3cfc8aa.up.railway.app"
+      ]
+    },
+    {
       "name": "g2-microphone",
       "desc": "Listens only while you hold the touchpad, so you can ask a question by voice."
     }

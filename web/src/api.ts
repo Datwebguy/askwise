@@ -2,6 +2,8 @@ import { MESSAGES } from '../../shared/labels.ts'
 import type { ConnectionView, ExportPreview, JobView, NotionPageChoice, Report, Settings, Source } from '../../shared/types.ts'
 
 const TOKEN_KEY = 'askwise.session'
+/** Service address for the packaged glasses app; empty when the app is served by the service itself. */
+const BASE = (import.meta.env.VITE_ASKWISE_URL ?? '').replace(/\/$/, '')
 
 /** A request the service answered with a friendly refusal. */
 export class AskWiseRefusal extends Error {
@@ -50,7 +52,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const audio = body instanceof Uint8Array
   let res: Response
   try {
-    res = await fetch(path, {
+    res = await fetch(`${BASE}${path}`, {
       method,
       headers: {
         ...(audio ? { 'Content-Type': 'audio/wav' } : body !== undefined ? { 'Content-Type': 'application/json' } : {}),

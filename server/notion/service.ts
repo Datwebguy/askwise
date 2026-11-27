@@ -106,6 +106,17 @@ export class NotionService implements NotesReader {
     return this.opts.oauth !== null
   }
 
+  /** Reports on the published shared page get its public address, so anyone can open them. */
+  private publicUrl(destinationId: string, pageId: string): string | null {
+    const shared = this.opts.shared
+    if (!shared?.url || shared.pageId.replace(/-/g, '') !== destinationId.replace(/-/g, '')) return null
+    try {
+      return `${new URL(shared.url).origin}/${pageId.replace(/-/g, '')}`
+    } catch {
+      return null
+    }
+  }
+
   get sharedPage(): { title: string; url: string | null } | null {
     return this.opts.shared && this.opts.serviceToken ? { title: SHARED_TITLE, url: this.opts.shared.url } : null
   }
@@ -400,7 +411,8 @@ export class NotionService implements NotesReader {
     await this.setJobStatus(jobId, 'APPROVED_FOR_EXPORT')
 
     try {
-      const page = await this.clientWith(target.token).createPage(row.destination_id, current.title, toNotionBlocks(current.lines))
+      const created = await this.clientWith(target.token).createPage(row.destination_id, current.title, toNotionBlocks(current.lines))
+      const page = { id: created.id, url: this.publicUrl(row.destination_id, created.id) ?? created.url }
       await this.db.run(`UPDATE exports SET status = 'EXPORTED', notion_page_id = ?, notion_url = ?, updated_at = ? WHERE id = ?`, page.id, page.url, now(), row.id)
       await this.setJobStatus(jobId, 'EXPORTED')
       record(this.db, userId, 'export_completed')
