@@ -138,3 +138,13 @@ describe('checking again and asking more on the glasses', () => {
     expect(draftScreen('Compare two phones').title).toBe('Your question')
   })
 })
+
+describe('product names on the phone', () => {
+  it('never repeats the brand, for apps named after their maker', async () => {
+    const { productName } = await import('../web/src/phone/report-view.ts')
+    const base = { model: '', variant: '', region: '', url: null, specs: [], prices: [], priceNote: null, reviews: [], pros: [], cons: [] }
+    expect(productName({ ...base, brand: 'Notion', name: 'Notion' })).toBe('Notion')
+    expect(productName({ ...base, brand: 'Apple', name: 'MacBook Air M4' })).toBe('Apple MacBook Air M4')
+    expect(productName({ ...base, brand: 'Dell', name: 'Dell XPS 13', model: 'XPS 13 9350' })).toBe('Dell XPS 13 9350')
+  })
+})

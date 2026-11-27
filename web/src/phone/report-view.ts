@@ -35,7 +35,10 @@ function refs(ids: number[], sources: Source[]): string {
 const unconfirmed = () => `<span class="label muted">${esc(CLAIM_LABELS.UNVERIFIED)}</span>`
 
 export function productName(p: Product): string {
-  return [p.brand, p.model || p.name].filter(Boolean).join(' ')
+  const name = p.model || p.name
+  // Software is often named after its maker ("Notion" by Notion): never repeat the brand.
+  if (!p.brand || name.toLowerCase().startsWith(p.brand.toLowerCase())) return name || p.brand
+  return `${p.brand} ${name}`
 }
 
 function isBest(p: Product, report: Report): boolean {
