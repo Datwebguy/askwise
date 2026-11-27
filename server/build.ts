@@ -14,14 +14,20 @@ import { NotionService } from './notion/service.ts'
 import { loadSecret, SecretBox } from './secret-box.ts'
 import { OpenAITranscriber } from './voice/transcribe.ts'
 
-export async function buildService(config: Config, opts: { background?: (work: Promise<unknown>) => void } = {}) {
+export async function buildService(config: Config, opts: { background?: (work: Promise<unknown>) => void; sweepEveryMs?: number } = {}) {
   const db: Db = config.databaseUrl ? await openPostgres(config.databaseUrl) : openDb(path.join(config.dataDir, 'askwise.db'))
 
   await removeExpired(db)
-  // Only research that has been quiet for longer than the time limit is treated as interrupted.
-  const quietSince = new Date(Date.now() - config.researchTimeLimitMs - 60_000).toISOString()
-  const interrupted = await markInterrupted(db, MESSAGES.interrupted, quietSince)
-  if (interrupted) log(`${interrupted} research request(s) were interrupted`)
+  // Research that has been quiet for longer than the time limit can no longer finish (for example
+  // the service restarted while it ran). It is marked so the person sees a clear message instead of
+  // waiting forever. Checked at start and then every minute.
+  const sweep = async () => {
+    const quietSince = new Date(Date.now() - config.researchTimeLimitMs - 60_000).toISOString()
+    const interrupted = await markInterrupted(db, MESSAGES.interrupted, quietSince)
+    if (interrupted) log(`${interrupted} research request(s) were interrupted`)
+  }
+  await sweep()
+  if (opts.sweepEveryMs !== 0) setInterval(() => void sweep().catch(() => undefined), opts.sweepEveryMs ?? 60_000).unref()
 
   const provider = config.openaiApiKey
     ? new OpenAIResearchProvider({ apiKey: config.openaiApiKey, researchModel: config.researchModel, plannerModel: config.plannerModel })
