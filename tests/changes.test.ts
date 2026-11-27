@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffReports, sameName } from '../server/research/changes.ts'
+import { diffReports, sameName, specChanged } from '../server/research/changes.ts'
 import { verifyReport } from '../server/research/verify.ts'
 import { numberSources } from '../server/research/sources.ts'
 import { FIXTURE_SEARCH, fixtureRawReport } from './fixtures/research.ts'
@@ -53,5 +53,18 @@ describe('recognising the same product written two ways', () => {
     const before = build(fixtureRawReport())
     const raw = fixtureRawReport({ recommendation: { choice: 'Fixture A (2025)', why: 'Battery.', drawback: 'Weight.', alternative: 'Fixture B', noClearWinner: false } })
     expect(diffReports(before, build(raw))[0]).toEqual({ kind: 'pick', same: true, text: 'Best pick unchanged: Fixture A (2025)' })
+  })
+})
+
+describe('specification changes', () => {
+  it('ignores rewording, extra units and rounding, from a real check', () => {
+    expect(specChanged('2.7 lb', '2.7 lb (1.24 kg)')).toBe(false)
+    expect(specChanged('1.21 kg (2.67 lb)', 'Starting weight depends on display configuration; spec sheet lists 2.7 lb for certain configurations')).toBe(false)
+    expect(specChanged('Up to 18 hours', 'Fanless design')).toBe(false)
+  })
+  it('reports a real difference in the same unit', () => {
+    expect(specChanged('15h', '14h')).toBe(true)
+    expect(specChanged('16 GB', '24 GB')).toBe(true)
+    expect(specChanged('1.21 kg', '1.40 kg')).toBe(true)
   })
 })

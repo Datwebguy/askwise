@@ -30,6 +30,30 @@ function match(p: Product, list: Product[]): Product | null {
   return list.find(q => sameName(label(q), label(p))) ?? list.find(q => sameName(q.name, p.name)) ?? null
 }
 
+/** Number-and-unit pairs in a value, for example "1.21 kg (2.67 lb)" gives kg 1.21 and lb 2.67. */
+function measures(v: string): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const [, n, u] of v.toLowerCase().replace(/,/g, '').matchAll(/(\d+(?:\.\d+)?)\s*([a-z"%]+)?/g)) {
+    const unit = u ?? ''
+    if (!m.has(unit)) m.set(unit, Number(n))
+  }
+  return m
+}
+
+/**
+ * A specification counts as changed only when both values give a number in the same unit
+ * and those numbers really differ (more than rounding). Rewording is never a change.
+ */
+export function specChanged(before: string, after: string): boolean {
+  const a = measures(before), b = measures(after)
+  for (const [unit, x] of a) {
+    const y = b.get(unit)
+    if (y === undefined || !unit) continue
+    return Math.abs(x - y) > Math.max(Math.abs(x), Math.abs(y)) * 0.03
+  }
+  return false
+}
+
 export function diffReports(before: Report, after: Report): Change[] {
   const out: Change[] = []
 
@@ -59,7 +83,7 @@ export function diffReports(before: Report, after: Report): Change[] {
     for (const s of p.specs) {
       if (!s.confirmed) continue
       const o = old.specs.find(x => norm(x.name) === norm(s.name) && x.confirmed)
-      if (o && norm(o.value) !== norm(s.value)) out.push({ kind: 'spec', same: false, text: `${label(p)} ${s.name.toLowerCase()}: ${o.value} → ${s.value}` })
+      if (o && specChanged(o.value, s.value)) out.push({ kind: 'spec', same: false, text: `${label(p)} ${s.name.toLowerCase()}: ${o.value} → ${s.value}` })
     }
   }
   for (const p of before.products) {
