@@ -7,6 +7,8 @@ import type { ProviderError, ResearchProvider } from './provider.ts'
 import type { Plan } from './schema.ts'
 import { numberSources } from './sources.ts'
 import { needsReview, verifyReport } from './verify.ts'
+import { diffReports } from './changes.ts'
+import { previousReport } from './prompts.ts'
 import * as jobs from './jobs.ts'
 
 export interface NotesReader {
@@ -66,6 +68,9 @@ export class ResearchEngine {
       await step('RUNNING', 'understanding')
       const notes = row.use_notion && this.notes ? await this.notes.readSelectedPage(row.user_id) : null
       const notesText = notes ? notes.text : null
+      const parentRow = row.parent_id ? await jobs.getOwnedJob(this.db, row.user_id, row.parent_id) : null
+      const parent = parentRow ? jobs.getReport(parentRow) : null
+      const previous = parent && row.relation ? previousReport(parent, row.relation) : null
 
       let plan: Plan
       if (row.plan_json) {
@@ -79,6 +84,7 @@ export class ResearchEngine {
               clarification: row.clarification,
               settings,
               notes: notesText,
+              previous,
             },
             signal,
           ),
@@ -86,14 +92,15 @@ export class ResearchEngine {
         await jobs.savePlan(this.db, jobId, plan)
       }
 
-      if (plan.needsClarification && plan.clarifyingQuestion && !row.clarification && !skipClarification) {
+      // A fresh check repeats a question that was already answered, so it never stops to ask again.
+      if (plan.needsClarification && plan.clarifyingQuestion && !row.clarification && !skipClarification && row.relation !== 'recheck') {
         await jobs.askClarification(this.db, jobId, plan.clarifyingQuestion)
         return
       }
 
       await step('RUNNING', 'searching')
       const found = await withRetry(() =>
-        provider.search({ question: row.question, clarification: row.clarification, plan, notes: notesText }, signal),
+        provider.search({ question: row.question, clarification: row.clarification, plan, notes: notesText, previous }, signal),
       )
       const checkedAt = new Date().toISOString()
       const sources = numberSources(found.sources)
@@ -110,6 +117,11 @@ export class ResearchEngine {
         usedNotionPage: notes?.title ?? null,
         citedIds: sources.filter(s => found.sources.some(f => f.cited && f.url === s.url)).map(s => s.id),
       })
+
+      if (parent && parentRow && row.relation) {
+        report.basedOn = { id: parentRow.id, title: parent.title, createdAt: parent.createdAt, relation: row.relation }
+        if (row.relation === 'recheck') report.changes = diffReports(parent, report)
+      }
 
       await step('VERIFYING', 'writing')
       await jobs.saveReport(this.db, jobId, report, needsReview(report) ? 'NEEDS_REVIEW' : 'READY')

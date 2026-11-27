@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { measureTextWrap } from '@evenrealities/pretext'
 import { BODY_INNER, BODY_MAX_LINES, paginateBody } from '../web/src/glasses/display.ts'
-import { resultScreens, viewFor, researchingScreen } from '../web/src/glasses/screens.ts'
+import { draftScreen, listeningScreen, resultScreens, viewFor, researchingScreen } from '../web/src/glasses/screens.ts'
 import { pagesOf } from '../web/src/glasses/controller.ts'
 import { verifyReport } from '../server/research/verify.ts'
 import { numberSources } from '../server/research/sources.ts'
 import { FIXTURE_SEARCH, fixtureRawReport } from './fixtures/research.ts'
+import { diffReports } from '../server/research/changes.ts'
 import type { JobView } from '../shared/types.ts'
 import { DEVELOPER_WORDS } from './wording.ts'
 
@@ -31,6 +32,7 @@ const job = (over: Partial<JobView> = {}): JobView => ({
   updatedAt: '2026-11-26T10:00:00.000Z',
   hasReport: true,
   exported: null,
+  basedOn: null,
   ...over,
 })
 
@@ -103,5 +105,36 @@ describe('glasses screens', () => {
         for (const w of DEVELOPER_WORDS) expect(text.toLowerCase()).not.toMatch(new RegExp(`\\b${w}\\b`))
       }
     }
+  })
+})
+
+describe('checking again and asking more on the glasses', () => {
+  // Test fixtures only: a fresh check of the fixture report with a changed price and pick.
+  const before = report
+  const raw = fixtureRawReport({ recommendation: { choice: 'Laptop B', why: 'Lighter.', drawback: 'Battery.', alternative: 'Laptop A', noClearWinner: false } })
+  raw.products[0].prices[0].amount = 949
+  const after = verifyReport(raw, { question: 'Fixture question', researchType: 'product_comparison', sources: numberSources(FIXTURE_SEARCH.sources), checkedAt: '2026-11-27T10:00:00.000Z', usedNotionPage: null })
+  after.basedOn = { id: 'fixture-job', title: before.title, createdAt: before.createdAt, relation: 'recheck' }
+  after.changes = diffReports(before, after)
+
+  it('shows what changed right after the answer, and fits the display', () => {
+    const screens = resultScreens(job({ basedOn: { id: 'fixture-job', relation: 'recheck' } }), after)
+    expect(screens[1].title).toMatch(/^What changed/)
+    expect(screens[1].body).toContain('Best pick changed: Fixture A → Laptop B')
+    const view = viewFor({ signedIn: true, job: job(), report: after, offline: false }, true)
+    for (const page of pagesOf(view)) {
+      expect(measureTextWrap(page.body, BODY_INNER.width).lineCount).toBeLessThanOrEqual(BODY_MAX_LINES)
+      for (const w of DEVELOPER_WORDS) expect(page.body.toLowerCase()).not.toContain(w)
+    }
+  })
+
+  it('has no changes screen on a first report', () => {
+    expect(resultScreens(job(), before).some(s => s.title.startsWith('What changed'))).toBe(false)
+  })
+
+  it('makes clear a spoken question is about the answer on the lens', () => {
+    expect(listeningScreen(true).body).toContain('Ask about this answer')
+    expect(draftScreen('Which one has the better keyboard?', true).title).toBe('About this answer')
+    expect(draftScreen('Compare two phones').title).toBe('Your question')
   })
 })

@@ -6,6 +6,8 @@ export interface PlanRequest {
   clarification: string | null
   settings: { country: string | null; currency: string | null }
   notes: string | null
+  /** An earlier AskWise report this request checks again or follows up on, as plain text. */
+  previous?: string | null
 }
 
 export interface SearchRequest {
@@ -13,6 +15,7 @@ export interface SearchRequest {
   clarification: string | null
   plan: Plan
   notes: string | null
+  previous?: string | null
 }
 
 export interface FoundSource {

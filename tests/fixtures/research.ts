@@ -96,14 +96,18 @@ export class FixtureProvider implements ResearchProvider {
   searchDelayMs = 0
   failSearch: ProviderError | null = null
   lastNotes: string | null = null
+  lastPrevious: string | null = null
+  lastSearchPrevious: string | null = null
 
-  async plan(req: { notes: string | null }) {
+  async plan(req: { notes: string | null; previous?: string | null }) {
     this.calls.push('plan')
     this.lastNotes = req.notes
+    this.lastPrevious = req.previous ?? null
     return this.plan_
   }
-  async search(_req: unknown, signal: AbortSignal) {
+  async search(req: { previous?: string | null }, signal: AbortSignal) {
     this.calls.push('search')
+    this.lastSearchPrevious = req.previous ?? null
     if (this.searchDelayMs) {
       await new Promise<void>((resolve, reject) => {
         const t = setTimeout(resolve, this.searchDelayMs)

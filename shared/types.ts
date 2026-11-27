@@ -119,6 +119,17 @@ export interface EvidenceSummary {
   pricesCheckedAt: string | null
 }
 
+/** How a research request relates to an earlier report. */
+export type Relation = 'recheck' | 'follow_up'
+
+/** One difference between an earlier report and a fresh check of the same question, computed from both real reports. */
+export interface Change {
+  kind: 'pick' | 'price' | 'spec' | 'product' | 'evidence'
+  text: string
+  /** True when this item was checked again and stayed the same. */
+  same: boolean
+}
+
 export interface Report {
   researchType: ResearchType
   title: string
@@ -135,6 +146,10 @@ export interface Report {
   evidence: EvidenceSummary
   createdAt: string
   usedNotionPage: string | null
+  /** The earlier report this one checks again or follows up on. */
+  basedOn?: { id: string; title: string; createdAt: string; relation: Relation } | null
+  /** For a fresh check: what changed since the earlier report. */
+  changes?: Change[] | null
 }
 
 export interface JobView {
@@ -151,6 +166,7 @@ export interface JobView {
   updatedAt: string
   hasReport: boolean
   exported: { url: string; at: string } | null
+  basedOn: { id: string; relation: Relation } | null
 }
 
 export interface NotionPageChoice {

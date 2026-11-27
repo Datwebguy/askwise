@@ -85,6 +85,15 @@ export function resultScreens(job: JobView, report: Report): Screen[] {
   else if (report.recommendation.noClearWinner) answer.push('\nNo clear winner.')
   screens.push({ title: 'Answer', body: answer.join('\n'), footer: HINT_PAGES })
 
+  if (report.changes?.length && report.basedOn) {
+    const changed = report.changes.filter(c => !c.same).map(c => `- ${c.text}`)
+    screens.push({
+      title: 'What changed',
+      body: `Since ${shortDate(report.basedOn.createdAt)}:\n${changed.length ? changed.slice(0, 3).join('\n') : 'Nothing important changed.'}`,
+      footer: HINT_PAGES,
+    })
+  }
+
   if (g.reason) screens.push({ title: 'Why', body: g.reason, footer: HINT_PAGES })
   if (g.drawback) screens.push({ title: 'Watch out', body: g.drawback, footer: HINT_PAGES })
 
@@ -137,16 +146,18 @@ export function gettingReadyScreen(): Screen {
   return { title: 'One moment', body: 'Getting ready to listen…', footer: 'Keep holding' }
 }
 
-export function listeningScreen(): Screen {
-  return { title: 'Listening', body: 'Ask your question now.\n\nFor example: compare two phones for battery life under 800 dollars.', footer: HINT_LISTEN }
+export function listeningScreen(aboutAnswer = false): Screen {
+  return aboutAnswer
+    ? { title: 'Listening', body: 'Ask about this answer now.\n\nFor example: which one has the better keyboard?', footer: HINT_LISTEN }
+    : { title: 'Listening', body: 'Ask your question now.\n\nFor example: compare two phones for battery life under 800 dollars.', footer: HINT_LISTEN }
 }
 
 export function writingScreen(): Screen {
   return { title: 'Got it', body: 'Writing down your question…', footer: 'One moment' }
 }
 
-export function draftScreen(text: string): Screen {
-  return { title: 'Your question', body: text, footer: HINT_DRAFT }
+export function draftScreen(text: string, aboutAnswer = false): Screen {
+  return { title: aboutAnswer ? 'About this answer' : 'Your question', body: text, footer: HINT_DRAFT }
 }
 
 export function voiceProblemScreen(message: string): Screen {

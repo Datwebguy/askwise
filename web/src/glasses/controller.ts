@@ -25,11 +25,14 @@ export function pagesOf(view: GlassesView, paginate: (t: string) => string[] = p
 
 type Voice =
   | { step: 'off' }
-  | { step: 'listening'; capture: VoiceCapture; ready: boolean }
+  | { step: 'listening'; capture: VoiceCapture; ready: boolean; about: About }
   | { step: 'writing' }
-  | { step: 'draft'; text: string }
+  | { step: 'draft'; text: string; about: About }
   | { step: 'sending'; text: string }
   | { step: 'problem'; message: string }
+
+/** The answer on the lens when the person starts speaking: the question then asks about it. */
+type About = { id: string; title: string } | null
 
 export class GlassesController {
   private showResult = false
@@ -68,12 +71,12 @@ export class GlassesController {
     const screen =
       v.step === 'listening'
         ? v.ready
-          ? listeningScreen()
+          ? listeningScreen(v.about !== null)
           : gettingReadyScreen()
         : v.step === 'writing' || v.step === 'sending'
           ? writingScreen()
           : v.step === 'draft'
-            ? draftScreen(v.text)
+            ? draftScreen(v.text, v.about !== null)
             : v.step === 'problem'
               ? voiceProblemScreen(v.message)
               : null
@@ -89,29 +92,31 @@ export class GlassesController {
   // ---- Voice ---------------------------------------------------------
   private async startListening(): Promise<void> {
     if (!this.tracker.state.signedIn || this.voice.step === 'listening' || this.voice.step === 'writing' || this.voice.step === 'sending') return
-    this.setVoice({ step: 'listening', capture: new VoiceCapture(), ready: false })
+    const job = this.tracker.state.job
+    const about: About = this.view?.kind === 'result' && job?.hasReport ? { id: job.id, title: job.title ?? job.question } : null
+    this.setVoice({ step: 'listening', capture: new VoiceCapture(), ready: false, about })
     const ok = await this.bridge.audioControl(true).catch(() => false)
     if (!ok && (this.voice as Voice).step === 'listening') this.setVoice({ step: 'problem', message: "The microphone isn't available right now." })
   }
 
   private async stopListening(): Promise<void> {
     if (this.voice.step !== 'listening') return
-    const capture = this.voice.capture
+    const { capture, about } = this.voice
     await this.bridge.audioControl(false).catch(() => false)
     if (capture.seconds < 0.6) return this.setVoice({ step: 'problem', message: 'Hold the touchpad while you speak, then let go.' })
     this.setVoice({ step: 'writing' })
     try {
       const { text } = await api.transcribe(capture.toWav())
-      this.setVoice({ step: 'draft', text })
+      this.setVoice({ step: 'draft', text, about })
     } catch (e) {
       this.setVoice({ step: 'problem', message: e instanceof Error && e.message ? e.message : MESSAGES.retry })
     }
   }
 
-  private async sendDraft(text: string): Promise<void> {
+  private async sendDraft(text: string, about: About): Promise<void> {
     this.setVoice({ step: 'sending', text })
     try {
-      const { job } = await api.ask(text, false, newRequestKey())
+      const { job } = about ? await api.followUp(about.id, text, false, newRequestKey()) : await api.ask(text, false, newRequestKey())
       this.voice = { step: 'off' }
       this.showResult = false
       this.tracker.follow(job)
@@ -178,7 +183,7 @@ export class GlassesController {
         void this.bridge.shutDownPageContainer(1)
         return
       }
-      if (this.voice.step === 'draft' && is(OsEventTypeList.CLICK_EVENT)) return void this.sendDraft(this.voice.text)
+      if (this.voice.step === 'draft' && is(OsEventTypeList.CLICK_EVENT)) return void this.sendDraft(this.voice.text, this.voice.about)
       if (this.voice.step === 'problem' && (is(OsEventTypeList.CLICK_EVENT) || text === OsEventTypeList.SCROLL_TOP_EVENT)) {
         return this.setVoice({ step: 'off' })
       }

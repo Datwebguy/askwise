@@ -52,7 +52,7 @@ export class OpenAIResearchProvider implements ResearchProvider {
       {
         model: this.opts.plannerModel,
         instructions: PLANNER_INSTRUCTIONS,
-        input: plannerInput(req.question, req.clarification, req.settings, req.notes),
+        input: plannerInput(req.question, req.clarification, req.settings, req.notes, req.previous ?? null),
         text: { format: { type: 'json_schema', name: 'research_plan', strict: true, schema: PLAN_SCHEMA } },
         max_output_tokens: 4000,
         reasoning: { effort: 'low' },
@@ -69,7 +69,7 @@ export class OpenAIResearchProvider implements ResearchProvider {
       {
         model: this.opts.researchModel,
         instructions: SEARCH_INSTRUCTIONS,
-        input: searchInput(req.question, req.clarification, req.plan, req.notes),
+        input: searchInput(req.question, req.clarification, req.plan, req.notes, req.previous ?? null),
         tools: [{ type: 'web_search' }],
         include: ['web_search_call.action.sources'],
         max_output_tokens: 16000,

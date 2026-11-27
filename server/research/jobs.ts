@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import type { Db } from '../db.ts'
 import { now } from '../db.ts'
 import { ACTIVE_STATUSES, REPORT_STATUSES } from '../../shared/types.ts'
-import type { JobStatus, JobView, Report, ResearchStage, ResearchType } from '../../shared/types.ts'
+import type { JobStatus, JobView, Relation, Report, ResearchStage, ResearchType } from '../../shared/types.ts'
 import type { Plan } from './schema.ts'
 
 export interface JobRow {
@@ -19,6 +19,8 @@ export interface JobRow {
   stage: ResearchStage | null
   message: string | null
   report_json: string | null
+  parent_id: string | null
+  relation: Relation | null
   created_at: string
   updated_at: string
 }
@@ -52,11 +54,18 @@ export async function countAllSince(db: Db, sinceIso: string): Promise<number> {
   return (await db.get('SELECT COUNT(*) AS n FROM research_jobs WHERE created_at >= ?', sinceIso) as { n: number }).n
 }
 
-export async function createJob(db: Db, userId: string, question: string, useNotion: boolean, requestKey: string | null): Promise<JobRow> {
+export async function createJob(
+  db: Db,
+  userId: string,
+  question: string,
+  useNotion: boolean,
+  requestKey: string | null,
+  parent: { id: string; relation: Relation; clarification?: string | null } | null = null,
+): Promise<JobRow> {
   const id = crypto.randomUUID()
   const t = now()
-  await db.run(`INSERT INTO research_jobs (id, user_id, request_key, question, use_notion, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?)`, id, userId, requestKey, question, useNotion ? 1 : 0, t, t)
+  await db.run(`INSERT INTO research_jobs (id, user_id, request_key, question, clarification, use_notion, status, parent_id, relation, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?, ?)`, id, userId, requestKey, question, parent?.clarification ?? null, useNotion ? 1 : 0, parent?.id ?? null, parent?.relation ?? null, t, t)
   return (await getJobRow(db, id))!
 }
 
@@ -141,6 +150,7 @@ export function toView(row: JobRow, exported: { url: string; at: string } | null
     updatedAt: row.updated_at,
     hasReport: REPORT_STATUSES.includes(row.status) && report !== null,
     exported,
+    basedOn: row.parent_id && row.relation ? { id: row.parent_id, relation: row.relation } : null,
   }
 }
 

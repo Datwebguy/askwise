@@ -5,6 +5,8 @@ export type ActivityEvent =
   | 'sign_in'
   | 'sign_in_refused'
   | 'research_created'
+  | 'research_recheck'
+  | 'research_follow_up'
   | 'research_cancelled'
   | 'research_stopped'
   | 'notion_connected'

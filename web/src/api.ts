@@ -113,6 +113,10 @@ export const api = {
   clarify: (id: string, clarification: string) =>
     request<{ job: JobView }>('POST', `/api/research/${encodeURIComponent(id)}/clarify`, { clarification }),
   skipClarify: (id: string) => request<{ job: JobView }>('POST', `/api/research/${encodeURIComponent(id)}/clarify`, { skip: true }),
+  recheck: (id: string, requestKey: string) =>
+    request<{ job: JobView; repeated?: boolean }>('POST', `/api/research/${encodeURIComponent(id)}/recheck`, { requestKey }),
+  followUp: (id: string, question: string, useNotion: boolean, requestKey: string) =>
+    request<{ job: JobView; repeated?: boolean }>('POST', `/api/research/${encodeURIComponent(id)}/follow-up`, { question, useNotion, requestKey }),
   cancel: (id: string) => request<{ job: JobView }>('POST', `/api/research/${encodeURIComponent(id)}/cancel`),
 
   connectNotion: () => request<{ notion: ConnectionView }>('POST', '/api/integrations/notion/connect'),

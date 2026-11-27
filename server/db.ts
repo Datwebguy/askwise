@@ -96,6 +96,8 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
   ['invites', 'make_owner', 'INTEGER NOT NULL DEFAULT 0'],
   ['connections', 'mode', "TEXT NOT NULL DEFAULT 'owner'"],
   ['connections', 'token_enc', 'TEXT'],
+  ['research_jobs', 'parent_id', 'TEXT'],
+  ['research_jobs', 'relation', 'TEXT'],
 ]
 
 const LATER_TABLES = `

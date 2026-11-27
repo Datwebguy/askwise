@@ -110,6 +110,19 @@ function productDetail(p: Product, report: Report): string {
     </div>`
 }
 
+/** What changed since the earlier report: changes first, then what stayed the same. */
+function changesHtml(report: Report): string {
+  const list = report.changes
+  if (!list?.length || !report.basedOn) return ''
+  const changed = list.filter(c => !c.same)
+  const same = list.filter(c => c.same)
+  return `<section class="card" style="border-color:var(--accent-text)">
+    <p class="eyebrow">What changed since ${esc(fmtDate(report.basedOn.createdAt))}</p>
+    ${changed.length ? `<ul class="list">${changed.map(c => `<li><strong>${esc(c.text)}</strong></li>`).join('')}</ul>` : '<p style="margin:0"><strong>Nothing important changed.</strong></p>'}
+    ${same.length ? `<ul class="dots" style="margin-top:10px;color:var(--text-2)">${same.map(c => `<li>${esc(c.text)}</li>`).join('')}</ul>` : ''}
+  </section>`
+}
+
 export function reportHtml(job: JobView, report: Report, canSave = true): string {
   const rec = report.recommendation
   const e = report.evidence
@@ -130,7 +143,20 @@ export function reportHtml(job: JobView, report: Report, canSave = true): string
     </div>
     <div class="card"><p style="margin:0;color:var(--text-2)">${esc(report.summary)}</p></div>
     ${report.missingInfo.length ? `<div class="card"><p class="eyebrow">What we couldn't confirm</p><ul class="dots">${report.missingInfo.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>` : ''}
-    ${report.followUps.length ? `<div class="card"><p class="eyebrow">Ask next</p><div class="chips">${report.followUps.map(f => `<button class="chip" data-followup="${esc(f)}">${esc(f)}</button>`).join('')}</div></div>` : ''}`
+    <form class="card" id="askmore">
+      <p class="eyebrow">Ask more about this</p>
+      ${report.followUps.length ? `<div class="chips" style="margin-bottom:12px">${report.followUps.map(f => `<button type="button" class="chip" data-followup="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}
+      <textarea id="more" rows="2" maxlength="1000" placeholder="For example: which one has the better keyboard?"></textarea>
+      <div class="row" style="margin-top:10px;justify-content:space-between;align-items:center">
+        <span class="small" id="moremsg">AskWise keeps this report in mind.</span>
+        <button class="button primary" type="submit">Ask</button>
+      </div>
+    </form>
+    <div class="card">
+      <p class="eyebrow">Check again</p>
+      <p style="margin:0 0 12px;color:var(--text-2)">Prices and details change. AskWise can research this question again and show you exactly what changed.</p>
+      <button class="button ghost" id="checkagain" type="button">Check again</button> <span class="small" id="checkmsg"></span>
+    </div>`
 
   const compare = report.products.length
     ? `${compareTable(report)}<div class="card">${report.products.map(p => productDetail(p, report)).join('')}</div>`
@@ -157,7 +183,9 @@ export function reportHtml(job: JobView, report: Report, canSave = true): string
         <h1>${esc(report.title)}</h1>
         <p class="question">${esc(report.question)}</p>
         ${report.usedNotionPage ? `<p class="small" style="margin:6px 0 0">With your Notion page “${esc(report.usedNotionPage)}”</p>` : ''}
+        ${report.basedOn ? `<p class="small" style="margin:6px 0 0">${report.basedOn.relation === 'recheck' ? 'Checked again from' : 'Follows up on'} <a href="#/report/${esc(report.basedOn.id)}">“${esc(report.basedOn.title)}”, ${esc(fmtDate(report.basedOn.createdAt))}</a></p>` : ''}
       </div>
+      ${changesHtml(report)}
 
       <section class="card answer-card">
         <p class="eyebrow">The short answer</p>

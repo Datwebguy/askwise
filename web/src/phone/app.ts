@@ -226,8 +226,33 @@ async function renderReport(root: HTMLElement, id: string): Promise<void> {
       root.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('active', (p as HTMLElement).dataset.panel === el.dataset.tab))
     })
     on(root, '[data-followup]', 'click', (_e, el) => {
-      draftQuestion = el.dataset.followup ?? ''
-      location.hash = '#/'
+      const box = root.querySelector<HTMLTextAreaElement>('#more')
+      if (box) { box.value = el.dataset.followup ?? ''; box.focus() }
+    })
+    root.querySelector('#askmore')?.addEventListener('submit', async e => {
+      e.preventDefault()
+      const text = (root.querySelector<HTMLTextAreaElement>('#more')?.value ?? '').trim()
+      const msg = $(root, '#moremsg')
+      if (text.length < 3) { msg.textContent = 'Please type your question.'; return }
+      msg.textContent = 'Starting…'
+      try {
+        const { job: started } = await api.followUp(job.id, text, report.usedNotionPage !== null, newRequestKey())
+        tracker.follow(started)
+        location.hash = '#/'
+      } catch (err) {
+        msg.textContent = friendly(err)
+      }
+    })
+    root.querySelector('#checkagain')?.addEventListener('click', async () => {
+      const msg = $(root, '#checkmsg')
+      msg.textContent = 'Starting…'
+      try {
+        const { job: started } = await api.recheck(job.id, newRequestKey())
+        tracker.follow(started)
+        location.hash = '#/'
+      } catch (err) {
+        msg.textContent = friendly(err)
+      }
     })
   } catch (err) {
     $(root, '#view').innerHTML = notice(friendly(err), 'warn')

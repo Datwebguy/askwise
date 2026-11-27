@@ -9,7 +9,7 @@ import { SecretBox } from '../server/secret-box.ts'
 import { ResearchEngine } from '../server/research/engine.ts'
 import { NotionService } from '../server/notion/service.ts'
 import { ProviderError } from '../server/research/provider.ts'
-import { FixtureProvider } from './fixtures/research.ts'
+import { FixtureProvider, fixtureRawReport } from './fixtures/research.ts'
 import { NotionFixtureServer } from './fixtures/notion.ts'
 import type { JobView } from '../shared/types.ts'
 
@@ -584,5 +584,83 @@ describe('Connect Notion with Notion sign-in', () => {
     const back = await app.request(`/api/integrations/notion/callback?code=bad-code&state=${state}`)
     expect(back.headers.get('location')).toBe('/#/settings/notion-declined')
     expect((await call('GET', '/api/me', guest)).body.notion.connected).toBe(false)
+  })
+})
+
+describe('checking a report again and asking more about it', () => {
+  it('checks a report again and shows what changed, read from both real reports', async () => {
+    const t = await signIn()
+    const first = await researched(t)
+    // The fixture shop now shows a lower price, and the pick changes.
+    provider.raw = fixtureRawReport({
+      recommendation: { choice: 'Laptop B', why: 'Lighter.', drawback: 'Battery.', alternative: 'Laptop A', noClearWinner: false },
+    })
+    provider.raw.products[0].prices[0].amount = 949
+    const res = await call('POST', `/api/research/${first.id}/recheck`, t, { requestKey: crypto.randomUUID() })
+    expect(res.status).toBe(201)
+    expect(res.body.job.basedOn).toEqual({ id: first.id, relation: 'recheck' })
+    const again = await waitFor(t, res.body.job.id, done)
+    expect(again.question).toBe(first.question)
+    const { report } = (await call('GET', `/api/research/${again.id}/report`, t)).body
+    expect(report.basedOn.id).toBe(first.id)
+    const texts = report.changes.map((c: { text: string }) => c.text)
+    expect(texts).toContain('Best pick changed: Fixture A → Laptop B')
+    expect(texts).toContain('FixtureCo Laptop A: 999 USD (Fixture Shop) → 949 USD (Fixture Shop)')
+    // The earlier report reached the research steps only as fenced information.
+    expect(provider.lastPrevious).toContain('<<<EARLIER')
+    expect(provider.lastSearchPrevious).toContain('check every product, price and specification again')
+  })
+
+  it('a fresh check never stops to ask the same follow-up question again', async () => {
+    const t = await signIn()
+    provider.plan_ = { ...provider.plan_, needsClarification: true, clarifyingQuestion: 'Budget?' }
+    const res = await call('POST', '/api/research', t, { question: 'Which laptop?', requestKey: crypto.randomUUID() })
+    const asked = await waitFor(t, res.body.job.id, done)
+    expect(asked.status).toBe('NEEDS_CLARIFICATION')
+    await call('POST', `/api/research/${asked.id}/clarify`, t, { clarification: 'Under 1000 USD' })
+    const first = await waitFor(t, asked.id, j => ['READY', 'NEEDS_REVIEW'].includes(j.status))
+    const again = (await call('POST', `/api/research/${first.id}/recheck`, t)).body.job
+    const finished = await waitFor(t, again.id, done)
+    expect(['READY', 'NEEDS_REVIEW']).toContain(finished.status)
+    expect(finished.clarification).toBe('Under 1000 USD')
+  })
+
+  it('asks a follow-up question about a finished report, with the report as context', async () => {
+    const t = await signIn()
+    const first = await researched(t)
+    const res = await call('POST', `/api/research/${first.id}/follow-up`, t, { question: 'Which one has the better keyboard?', requestKey: crypto.randomUUID() })
+    expect(res.status).toBe(201)
+    const job = await waitFor(t, res.body.job.id, done)
+    expect(job.question).toBe('Which one has the better keyboard?')
+    expect(job.basedOn).toEqual({ id: first.id, relation: 'follow_up' })
+    const { report } = (await call('GET', `/api/research/${job.id}/report`, t)).body
+    expect(report.basedOn.title).toBeTruthy()
+    expect(report.changes ?? null).toBeNull()
+    expect(provider.lastPrevious).toContain('EARLIER ASKWISE REPORT THE USER IS ASKING ABOUT')
+  })
+
+  it('refuses empty follow-ups, other people\'s reports and requests over the limits', async () => {
+    const t = await signIn()
+    const first = await researched(t)
+    expect((await call('POST', `/api/research/${first.id}/follow-up`, t, { question: ' ' })).status).toBe(400)
+    const other = await signIn()
+    expect((await call('POST', `/api/research/${first.id}/recheck`, other)).status).toBe(404)
+    expect((await call('POST', `/api/research/${first.id}/follow-up`, other, { question: 'Tell me more' })).status).toBe(404)
+    await setup({ perHour: 1 })
+    const u = await signIn()
+    const one = await researched(u)
+    const r = await call('POST', `/api/research/${one.id}/recheck`, u)
+    expect(r.status).toBe(429)
+    expect(r.text).not.toMatch(/429|limit exceeded/i)
+  })
+
+  it('a repeated request key returns the same fresh check', async () => {
+    const t = await signIn()
+    const first = await researched(t)
+    const key = crypto.randomUUID()
+    const a = await call('POST', `/api/research/${first.id}/recheck`, t, { requestKey: key })
+    const b = await call('POST', `/api/research/${first.id}/recheck`, t, { requestKey: key })
+    expect(b.body.job.id).toBe(a.body.job.id)
+    expect(b.body.repeated).toBe(true)
   })
 })

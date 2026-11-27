@@ -8,7 +8,7 @@ import { createGuest, createInvite, endSession, isOwner, redeemInvite, userForTo
 import { log, record } from './activity.ts'
 import { MESSAGES } from '../shared/labels.ts'
 import { ACTIVE_STATUSES } from '../shared/types.ts'
-import type { Report, Settings } from '../shared/types.ts'
+import type { Relation, Report, Settings } from '../shared/types.ts'
 import type { ResearchEngine } from './research/engine.ts'
 import * as jobs from './research/jobs.ts'
 import { NotionRefused } from './notion/service.ts'
@@ -195,11 +195,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     }
     const same = await jobs.findActiveSameQuestion(db, userId, question)
     if (same) return c.json({ job: jobs.toView(same, null), repeated: true })
-    if (await jobs.countActive(db, userId) >= deps.maxActivePerUser) return c.json({ message: MESSAGES.tooMany }, 429)
-    const hourAgo = new Date(Date.now() - 3600_000).toISOString()
-    if (await jobs.countSince(db, userId, hourAgo) >= deps.researchPerHour) return c.json({ message: MESSAGES.busy }, 429)
-    const dayStart = new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()
-    if (await jobs.countAllSince(db, dayStart) >= deps.researchPerDay) return c.json({ message: MESSAGES.dailyLimit }, 429)
+    const limited = await overLimit(userId)
+    if (limited) return c.json({ message: limited }, 429)
 
     const useNotion = body.useNotion === true && (await notion.view(userId)).readPage !== null
     const row = await jobs.createJob(db, userId, question, useNotion, requestKey)
@@ -207,6 +204,49 @@ export function createApp(deps: AppDeps): Hono<Env> {
     background(engine.start(row.id))
     return c.json({ job: jobs.toView((await jobs.getJobRow(db, row.id))!, null) }, 201)
   })
+
+  /** The fair-use limits every new research request goes through. Returns the message to show, or null. */
+  async function overLimit(userId: string): Promise<string | null> {
+    if (await jobs.countActive(db, userId) >= deps.maxActivePerUser) return MESSAGES.tooMany
+    const hourAgo = new Date(Date.now() - 3600_000).toISOString()
+    if (await jobs.countSince(db, userId, hourAgo) >= deps.researchPerHour) return MESSAGES.busy
+    const dayStart = new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()
+    if (await jobs.countAllSince(db, dayStart) >= deps.researchPerDay) return MESSAGES.dailyLimit
+    return null
+  }
+
+  /** Starts research linked to an earlier report: a fresh check of the same question, or a follow-up question. */
+  async function startLinked(c: Context<Env>, relation: Relation) {
+    const userId = c.get('userId')
+    if (!engine.available) return c.json({ message: 'Research is not set up yet.' }, 503)
+    const parent = await jobs.getOwnedJob(db, userId, c.req.param('id') ?? '')
+    if (!parent || !jobs.getReport(parent)) return c.json({ message: MESSAGES.notFound }, 404)
+    const body = await readJson(c)
+    const requestKey = typeof body.requestKey === 'string' && /^[A-Za-z0-9-]{8,100}$/.test(body.requestKey) ? body.requestKey : null
+    if (requestKey) {
+      const existing = await jobs.findByRequestKey(db, userId, requestKey)
+      if (existing) return c.json({ job: jobs.toView(existing, await notion.exportedInfo(existing.id)), repeated: true })
+    }
+    const question = relation === 'recheck'
+      ? parent.question
+      : typeof body.question === 'string' ? body.question.replace(/\s+/g, ' ').trim() : ''
+    if (question.length < 3 || question.length > 1000) return c.json({ message: 'Please type a question.' }, 400)
+    const limited = await overLimit(userId)
+    if (limited) return c.json({ message: limited }, 429)
+    const readPage = (await notion.view(userId)).readPage !== null
+    const useNotion = readPage && (relation === 'recheck' ? parent.use_notion === 1 : body.useNotion === true)
+    const row = await jobs.createJob(db, userId, question, useNotion, requestKey, {
+      id: parent.id,
+      relation,
+      clarification: relation === 'recheck' ? parent.clarification : null,
+    })
+    record(db, userId, relation === 'recheck' ? 'research_recheck' : 'research_follow_up')
+    background(engine.start(row.id))
+    return c.json({ job: jobs.toView((await jobs.getJobRow(db, row.id))!, null) }, 201)
+  }
+
+  app.post('/api/research/:id/recheck', c => startLinked(c, 'recheck'))
+  app.post('/api/research/:id/follow-up', c => startLinked(c, 'follow_up'))
 
   /** Turns a short spoken question from the glasses into text. Nothing is researched until the person confirms it. */
   app.post('/api/voice', async c => {
