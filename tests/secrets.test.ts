@@ -34,3 +34,14 @@ describe('keys stay on the service', () => {
     expect(fs.readFileSync('.gitignore', 'utf8')).toMatch(/^\.env$/m)
   })
 })
+
+describe('sealed values', () => {
+  it('rejects a shortened authentication tag', async () => {
+    const { SecretBox } = await import('../server/secret-box')
+    const box = new SecretBox('k')
+    const [iv, tag, data] = box.seal('hello').split('.')
+    expect(box.open([iv, tag, data].join('.'))).toBe('hello')
+    const short = Buffer.from(tag, 'base64url').subarray(0, 4).toString('base64url')
+    expect(() => box.open([iv, short, data].join('.'))).toThrow()
+  })
+})

@@ -59,7 +59,10 @@ export function createApp(deps: AppDeps): Hono<Env> {
   const guestLimiter = new AttemptLimiter(30, 60 * 60_000)
   const clientKey = (c: Context) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
 
-  app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: 'cross-origin', contentSecurityPolicy: undefined }))
+  app.use('*', secureHeaders({ crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: 'cross-origin', contentSecurityPolicy: {
+    defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:'],
+    fontSrc: ["'self'", 'data:'], connectSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"], frameAncestors: ["'self'"],
+  } }))
   // The packaged glasses app runs from its own origin. Sign-in uses a bearer token, never cookies.
   app.use('/api/*', cors({ origin: '*', allowHeaders: ['Authorization', 'Content-Type'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE'], maxAge: 86400 }))
   const smallBodies = bodyLimit({ maxSize: 32 * 1024, onError: c => c.json({ message: MESSAGES.checkInput }, 413) })

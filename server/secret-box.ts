@@ -19,7 +19,8 @@ export class SecretBox {
 
   open(sealed: string): string {
     const [iv, tag, data] = sealed.split('.').map(p => Buffer.from(p, 'base64url'))
-    const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, iv)
+    if (!iv || !tag || !data || iv.length !== 12 || tag.length !== 16) throw new Error('Sealed value is not valid')
+    const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, iv, { authTagLength: 16 })
     decipher.setAuthTag(tag)
     return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
   }
