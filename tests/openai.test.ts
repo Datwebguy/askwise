@@ -90,5 +90,6 @@ describe('research instructions for apps and online services', () => {
     expect(PLANNER_INSTRUCTIONS).toContain('software when the things asked about are apps, websites, tools or online services')
     for (const name of ['"Free plan"', '"Paid plans"', '"Mobile apps"', '"Integrations"', '"Limits"']) expect(STRUCTURE_INSTRUCTIONS).toContain(name)
     expect(SEARCH_INSTRUCTIONS).toContain('price per user and month')
+    expect(STRUCTURE_INSTRUCTIONS).toContain('the tools being compared ARE the products')
   })
 })
