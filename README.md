@@ -11,9 +11,9 @@ A research and decision assistant for Even Realities G2 glasses.</p>
 
 Nothing to install, sign up for or connect.
 
-- **On your phone or computer:** open [askwise-production-b3cfc8aa.up.railway.app](https://askwise-production-b3cfc8aa.up.railway.app) and ask a question.
-- **In the Even Realities simulator:** `npx @evenrealities/evenhub-simulator https://askwise-production-b3cfc8aa.up.railway.app`
-- **On G2 glasses:** `npx @evenrealities/evenhub-cli qr --url https://askwise-production-b3cfc8aa.up.railway.app`, then scan the code with the Even Realities app.
+- **On your phone or computer:** open [askwise.up.railway.app](https://askwise.up.railway.app) and ask a question.
+- **In the Even Realities simulator:** `npx @evenrealities/evenhub-simulator https://askwise.up.railway.app`
+- **On G2 glasses:** `npx @evenrealities/evenhub-cli qr --url https://askwise.up.railway.app`, then scan the code with the Even Realities app.
 
 Every device gets its own private space automatically. Save any report to the shared Notion page without connecting anything, or connect your own Notion in Settings.
 

@@ -11,7 +11,7 @@
       "name": "network",
       "desc": "Sends your questions to AskWise for research and brings back the answer.",
       "whitelist": [
-        "https://askwise-production-b3cfc8aa.up.railway.app"
+        "https://askwise.up.railway.app"
       ]
     },
     {
