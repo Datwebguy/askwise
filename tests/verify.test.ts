@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkClaim, glassesText, needsReview, plain, verifyReport } from '../server/research/verify.ts'
+import { checkClaim, glassesText, productName, needsReview, plain, verifyReport } from '../server/research/verify.ts'
 import { numberSources, normaliseUrl } from '../server/research/sources.ts'
 import { PRICE_UNCONFIRMED } from '../shared/labels.ts'
 import { FIXTURE_SEARCH, fixtureRawReport } from './fixtures/research.ts'
@@ -150,5 +150,13 @@ describe('source addresses', () => {
   it('removes tracking parameters and rejects non-web links', () => {
     expect(normaliseUrl('https://a.example/x?utm_source=openai&id=2#top')).toBe('https://a.example/x?id=2')
     expect(normaliseUrl('javascript:alert(1)')).toBeNull()
+  })
+})
+
+describe('best pick on the glasses', () => {
+  it('keeps the product name and drops side notes in brackets', () => {
+    expect(productName('MacBook Air M4 (budget + consistent battery)')).toBe('MacBook Air M4')
+    expect(productName('MacBook Air M4 (budget + consistent')).toBe('MacBook Air M4')
+    expect(productName('Garmin Forerunner 265')).toBe('Garmin Forerunner 265')
   })
 })

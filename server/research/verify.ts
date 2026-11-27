@@ -21,6 +21,11 @@ export interface VerifyContext {
 const LIMITS = { answer: 140, bestOption: 40, reason: 110, drawback: 110, alternative: 40 }
 
 /** Plain text for the glasses: no markdown, no emoji or symbols outside the basic planes, single spaces. */
+/** A best pick is a product name; side notes in brackets belong on the other screens. */
+export function productName(text: string | null | undefined): string {
+  return (text ?? '').replace(/\s*[(\[][^)\]]*[)\]]?\s*$/, '').trim()
+}
+
 export function glassesText(text: string | null | undefined, max: number): string {
   if (!text) return ''
   const clean = plain(text)
@@ -124,7 +129,7 @@ export function verifyReport(raw: RawReport, ctx: VerifyContext): Report {
     summary: plain(raw.summary),
     glasses: {
       answer: glassesText(raw.glasses.answer, LIMITS.answer),
-      bestOption: rec.noClearWinner ? null : glassesText(raw.glasses.bestOption, LIMITS.bestOption) || null,
+      bestOption: rec.noClearWinner ? null : glassesText(productName(raw.glasses.bestOption), LIMITS.bestOption) || null,
       reason: glassesText(raw.glasses.reason, LIMITS.reason),
       drawback: glassesText(raw.glasses.drawback, LIMITS.drawback),
       alternatives: raw.glasses.alternatives.map(a => glassesText(a, LIMITS.alternative)).filter(Boolean).slice(0, 3),
