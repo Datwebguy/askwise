@@ -605,7 +605,7 @@ describe('checking a report again and asking more about it', () => {
     expect(report.basedOn.id).toBe(first.id)
     const texts = report.changes.map((c: { text: string }) => c.text)
     expect(texts).toContain('Best pick changed: Fixture A → Laptop B')
-    expect(texts).toContain('FixtureCo Laptop A: 999 USD (Fixture Shop) → 949 USD (Fixture Shop)')
+    expect(texts).toContain('FixtureCo Laptop A: lowest price found 999 USD (Fixture Shop) → 949 USD (Fixture Shop)')
     // The earlier report reached the research steps only as fenced information.
     expect(provider.lastPrevious).toContain('<<<EARLIER')
     expect(provider.lastSearchPrevious).toContain('check every product, price and specification again')
