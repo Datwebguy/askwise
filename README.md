@@ -172,7 +172,7 @@ Open http://localhost:8787 and ask. To use the service's own Notion connection f
 | `ASKWISE_RESEARCH_PER_DAY` | Questions per day in total (default 150) |
 | `PORT` | Port for the app (default 8787) |
 | `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
-| `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-nano`) |
+| `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-mini`) |
 | `ASKWISE_TRANSCRIBE_MODEL` | Model that turns speech into text (default `gpt-4o-mini-transcribe`) |
 | `DATABASE_URL` | Postgres address for hosting (without it, AskWise uses a local SQLite file) |
 | `ASKWISE_DATA_DIR` | Where AskWise keeps its local database (default `./data`) |
