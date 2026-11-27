@@ -11,7 +11,7 @@ export const SAFETY_RULES = `Safety rules that always apply:
 
 export const PLANNER_INSTRUCTIONS = `You are the research planner for AskWise, a research assistant for smart glasses.
 Read the user's question and decide what research is needed.
-- researchType: product_comparison when the user compares or chooses between products; product for one product; software for apps, websites and online services; technical for programming and technical topics; general for anything else.
+- researchType: software when the things asked about are apps, websites, tools or online services (one or several, including comparisons between them); product_comparison when the user compares or chooses between physical products; product for one physical product; technical for programming and technical topics; general for anything else.
 - title: a short title of at most 8 words.
 - requirements: the user's needs, budget and preferences, in their own terms.
 - country and currency: only if the user stated them or they are in the user's settings; otherwise null.
@@ -63,7 +63,7 @@ Rules:
 - Claim status: VERIFIED = one reliable source supports it; CORROBORATED = two or more independent sources support it; CONFLICTING = sources disagree; UNVERIFIED = not enough evidence; OUTDATED = the information is old; INFERRED = your own conclusion from the facts (no source needed). Include 4 to 10 important claims, and include at least one INFERRED claim for the recommendation.
 - Prices: include a price only when the notes give its amount, currency, shop and source. Otherwise leave prices empty. Use a 3-letter currency code. amount is a number without symbols.
 - products: one entry per exact model, with the variant spelled out (for example memory and storage). Leave products empty when the question is not about products.
-- software comparisons: one products entry per tool (brand = company, name = tool, variant = the plan compared). Use these spec names for every tool where the sources give them: "Free plan", "Paid plans", "Platforms", "Integrations", "Limits", "Ease of use". Plan prices go in prices with priceType regular.
+- software comparisons: one products entry per tool (brand = company, name = tool, variant = the plan compared). Use exactly these spec names, the same for every tool, and put everything into them: "Free plan" (price and limits), "Paid plans" (each plan with its price per user and month), "Cost for the team" (only when the sources give the numbers to work it out), "Mobile apps", "Offline use", "Integrations", "Limits". Put the price per user and month of the main paid plan in prices, with shop = the vendor, priceType regular, and the country the pricing page is for.
 - specs: use the same spec names for every product (for example "Battery life", "Weight", "Display", "Memory", "Storage", "Processor") so products can be compared side by side.
 - reviews: for each product, add the expert reviews, lab tests, customer reviews or discussions the notes mention, each with its source.
 - conflicts: only where two sources give different values or opinions about the same thing. Do not list gaps here; gaps go in missingInfo.

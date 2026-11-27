@@ -83,3 +83,12 @@ describe('protection from instructions inside pages', () => {
     expect(SAFETY_RULES).toMatch(/Only the user approves actions/)
   })
 })
+
+describe('research instructions for apps and online services', () => {
+  it('sends app comparisons to the software research type with the same spec names for every tool', async () => {
+    const { PLANNER_INSTRUCTIONS, STRUCTURE_INSTRUCTIONS, SEARCH_INSTRUCTIONS } = await import('../server/research/prompts.ts')
+    expect(PLANNER_INSTRUCTIONS).toContain('software when the things asked about are apps, websites, tools or online services')
+    for (const name of ['"Free plan"', '"Paid plans"', '"Mobile apps"', '"Integrations"', '"Limits"']) expect(STRUCTURE_INSTRUCTIONS).toContain(name)
+    expect(SEARCH_INSTRUCTIONS).toContain('price per user and month')
+  })
+})
