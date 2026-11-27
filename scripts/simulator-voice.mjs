@@ -10,7 +10,7 @@ import path from 'node:path'
 
 const [, , outDir, phoneToken, audioFile, sink = 'askwise_voice'] = process.argv
 const SIM = 'http://127.0.0.1:9898'
-const APP = 'http://localhost:8787'
+const APP = process.env.ASKWISE_URL ?? 'http://localhost:8787'
 fs.mkdirSync(outDir, { recursive: true })
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a)

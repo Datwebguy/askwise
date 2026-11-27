@@ -14,8 +14,8 @@ const { chromium } = require('playwright')
 
 const [, , outDir, phoneToken, measureToken, simCommand] = process.argv
 const SIM = 'http://127.0.0.1:9898'
-const APP = 'http://localhost:8787'
-const WEBVIEW = { x: 204, y: 50, w: 600, h: 800 }
+const APP = process.env.ASKWISE_URL ?? 'http://localhost:8787'
+const WEBVIEW = { x: Number(process.env.WEBVIEW_X ?? 204), y: Number(process.env.WEBVIEW_Y ?? 50), w: 600, h: 800 }
 fs.mkdirSync(outDir, { recursive: true })
 const results = []
 
