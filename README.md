@@ -48,6 +48,7 @@ Short screens built for a 576 × 288 display. Tap to move forward, swipe up to g
 | Answer | One plain sentence and the best pick |
 | Why | The main reason |
 | Watch out | The biggest drawback |
+| What changed | After Check again: what changed since the earlier report |
 | Evidence | How well supported the answer is, how many sources, when prices were checked |
 | More options | Alternatives worth a look |
 | Save | A reminder to review and approve on the phone |
@@ -59,6 +60,15 @@ Short screens built for a 576 × 288 display. Tap to move forward, swipe up to g
 Hold the touchpad and speak. When you let go, your question appears on the lens as a draft. Tap to ask, or double-tap to throw it away. AskWise only listens while you hold the touchpad, and nothing is researched until you tap.
 
 <p align="center"><img src="media/voice-screens.png" alt="Asking AskWise by voice on the glasses" width="760"></p>
+
+## Check again, and ask more
+
+- **Check again.** Prices and details change. One tap on a report researches the same question fresh and shows exactly what changed: the pick, each price (with the shop) and any specification whose numbers really differ. Every change is read from the two real reports, never guessed.
+- **Ask more.** Ask a follow-up about a finished report, typed on the phone or spoken on the glasses while its answer is on the lens. AskWise keeps the earlier report in mind and researches the new question fresh.
+
+## Software and services
+
+AskWise compares apps and online services too: each plan and its price per user, the free plan and its limits, mobile apps, offline use and integrations, side by side, from the vendors' own pages.
 
 ## What appears on the phone
 
