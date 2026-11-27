@@ -7,6 +7,16 @@ A research and decision assistant for Even Realities G2 glasses.</p>
 
 <p align="center"><img src="media/askwise-flow.png" alt="AskWise on the G2 glasses and the phone" width="900"></p>
 
+## Try it now
+
+Nothing to install, sign up for or connect.
+
+- **On your phone or computer:** open [askwise-production-b3cfc8aa.up.railway.app](https://askwise-production-b3cfc8aa.up.railway.app) and ask a question.
+- **In the Even Realities simulator:** `npx @evenrealities/evenhub-simulator https://askwise-production-b3cfc8aa.up.railway.app`
+- **On G2 glasses:** `npx @evenrealities/evenhub-cli qr --url https://askwise-production-b3cfc8aa.up.railway.app`, then scan the code with the Even Realities app.
+
+Every device gets its own private space automatically. Save any report to the shared Notion page without connecting anything, or connect your own Notion in Settings.
+
 ## The problem
 
 You want to buy a laptop. There are three good options. One site lists different specs from another, prices change from shop to shop, and reviews disagree. An hour later you have twenty tabs open and still no answer.
@@ -179,6 +189,12 @@ Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
 1. Create a second connection with **OAuth** as the authentication method and the same capabilities.
 2. Set its redirect address to `https://<your-address>/api/integrations/notion/callback`.
 3. Put its client ID and secret in `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET`, and the redirect address in `NOTION_OAUTH_REDIRECT_URI`.
+
+### Deploy to Railway
+
+1. Create a project with a PostgreSQL database and a service from this repository.
+2. Set `DATABASE_URL` to the database's address, plus `ASKWISE_SECRET`, `OPENAI_API_KEY`, `NOTION_TOKEN` and the other variables above.
+3. Railway runs `npm run build` and starts the app with `npm start`.
 
 ### Deploy to Vercel
 
