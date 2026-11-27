@@ -1,267 +1,178 @@
-<p align="center"><img src="web/public/icon.svg" width="88" alt="AskWise"></p>
+<div align="center">
 
-<h1 align="center">AskWise</h1>
+<img src="web/public/icon.svg" width="96" alt="AskWise logo">
 
-<p align="center"><strong>Research anything. Compare your options. Know what to choose.</strong><br>
-A research and decision assistant for Even Realities G2 glasses.</p>
+# AskWise
 
-<p align="center"><img src="media/askwise-flow.png" alt="AskWise on the G2 glasses and the phone" width="900"></p>
+**Know what to choose.**
+A research assistant for Even Realities G2 glasses.
 
-## Try it now
+[![Try it live](https://img.shields.io/badge/Try_it_live-askwise.up.railway.app-2f6bff?style=for-the-badge)](https://askwise.up.railway.app)
+[![Watch the demo](https://img.shields.io/badge/Watch_the_demo-2%C2%BD_min-13b5d6?style=for-the-badge)](media/askwise-demo.mp4)
 
-Nothing to install, sign up for or connect.
+[What it does](#what-askwise-does) · [Use it](#use-askwise-in-two-minutes) · [Notion](#notion) · [Privacy](#privacy) · [Run it yourself](#run-it-yourself)
 
-- **On your phone or computer:** open [askwise.up.railway.app](https://askwise.up.railway.app) and ask a question.
-- **In the Even Realities simulator:** `npx @evenrealities/evenhub-simulator https://askwise.up.railway.app`
-- **On G2 glasses:** `npx @evenrealities/evenhub-cli qr --url https://askwise.up.railway.app`, then scan the code with the Even Realities app.
+<img src="media/askwise-flow.png" width="900" alt="The full report on the phone, and the answer on the G2 lens">
 
-Every device gets its own private space automatically. Save any report to the shared Notion page without connecting anything, or connect your own Notion in Settings.
+</div>
 
-## The problem
+## What AskWise does
 
-You want to buy a laptop. There are three good options. One site lists different specs from another, prices change from shop to shop, and reviews disagree. An hour later you have twenty tabs open and still no answer.
+When you're deciding between a few things to buy, the facts are spread across a dozen tabs and they often disagree. In our own test, Tom's Hardware measured the Dell XPS 13 at 17 h 29 m with one screen and 8 h 40 m with the other, while Dell's page says up to 26 hours.
 
-AskWise does that work for you. You ask once. It reads the web, checks what it finds against the sources and gives you a straight answer, with the evidence a tap away.
+AskWise does that reading for you. You ask a question, it searches official pages, reviews and shops, checks each important fact against the page it came from, and puts a short answer on your glasses: the best pick, why, and what to watch out for. The full report, with every source, opens on your phone.
 
-## Who it is for
+It works for products, for software and online services, and for general questions.
 
-People who make decisions on the move: shoppers comparing products, students choosing tools, professionals picking software, and anyone who wants a quick, trustworthy answer without opening a dozen websites.
+## Use AskWise in two minutes
 
-## How it works
+You don't need an account, and you don't need to connect anything.
 
-Open AskWise and start. There is nothing to sign up for and nothing to paste: each device gets its own private space automatically.
+1. Open **[askwise.up.railway.app](https://askwise.up.railway.app)** on your phone or computer.
+2. Type what you're deciding, for example: *Which should I buy, the MacBook Air M4 or the Dell XPS 13? My budget is $1,100.*
+3. Tap **Research**. In about a minute the answer is ready.
+4. Open the report to see the comparison, the checked facts and every source.
 
-1. **Ask** by voice on your glasses (hold the touchpad and speak) or type on your phone: name your options and what matters to you.
-2. **AskWise researches.** It searches the web, reads official pages, reviews and shops, and compares what it finds.
-3. **It checks.** Every important fact is matched to the page it came from. Facts without a source are never shown as confirmed.
-4. **Your glasses show the answer**: the best pick, the reason, the main drawback, how strong the evidence is and when prices were checked.
-5. **Your phone shows the full report**: a comparison table, specs, prices, reviews, checked facts, disagreements and every source.
-6. **You decide whether to save it.** You see exactly what will go into Notion, and nothing is written until you approve.
+Each device gets its own private space automatically.
 
-## What appears on the glasses
+### On the G2 glasses
 
-Short screens built for a 576 × 288 display. Tap to move forward, swipe up to go back, double-tap to exit.
+Open AskWise from the Even Realities app on a phone paired with your G2. To load it, scan the code from `npx @evenrealities/evenhub-cli qr --url https://askwise.up.railway.app`.
 
-| Screen | What it shows |
+| On the glasses | What it does |
 |---|---|
-| Researching | The real step AskWise is on, as it happens |
-| Answer | One plain sentence and the best pick |
-| Why | The main reason |
-| Watch out | The biggest drawback |
-| What changed | After Check again: what changed since the earlier report |
-| Evidence | How well supported the answer is, how many sources, when prices were checked |
-| More options | Alternatives worth a look |
-| Save | A reminder to review and approve on the phone |
+| Hold the touchpad and speak | Asks a question by voice. It appears as a draft, and nothing happens until you tap |
+| Tap | Next screen, or send a draft |
+| Swipe up | Back |
+| Double-tap | Throw away a draft, or leave the app |
 
-<p align="center"><img src="media/glasses-screens.png" alt="AskWise glasses screens" width="900"></p>
+The answer comes in short screens: **Answer**, **Why**, **Watch out**, **Evidence** (sources, confirmed facts and when prices were checked), **More options** and **Save**.
 
-## Ask by voice
+### Check again, and ask more
 
-Hold the touchpad and speak. When you let go, your question appears on the lens as a draft. Tap to ask, or double-tap to throw it away. AskWise only listens while you hold the touchpad, and nothing is researched until you tap.
+<img src="media/check-again-and-ask-more.png" width="820" alt="What changed after Check again, on the phone and the lens, and a spoken follow-up">
 
-<p align="center"><img src="media/voice-screens.png" alt="Asking AskWise by voice on the glasses" width="760"></p>
+- **Check again** researches the same question fresh and shows what changed since last time: the pick, each price with its shop, and any specification whose numbers really changed. Every change is read from the two real reports.
+- **Ask more** lets you ask a follow-up about a finished report. Type it under the report, or hold the touchpad and ask while the answer is on your lens. AskWise keeps the earlier answer in mind.
 
-## Check again, and ask more
+### Software and services too
 
-- **Check again.** Prices and details change. One tap on a report researches the same question fresh and shows exactly what changed: the pick, each price (with the shop) and any specification whose numbers really differ. Every change is read from the two real reports, never guessed.
-- **Ask more.** Ask a follow-up about a finished report, typed on the phone or spoken on the glasses while its answer is on the lens. AskWise keeps the earlier report in mind and researches the new question fresh.
+Ask it to compare apps or online services and it lines them up side by side: each plan and its price per user, the free plan and its limits, mobile apps, offline use and integrations, taken from the vendors' own pages.
 
-## Software and services
+<img src="media/software-comparison.png" width="620" alt="Notion, ClickUp and Asana compared side by side">
 
-AskWise compares apps and online services too: each plan and its price per user, the free plan and its limits, mobile apps, offline use and integrations, side by side, from the vendors' own pages.
+## How AskWise labels what it found
 
-## What appears on the phone
-
-The full report on one screen: the short answer first, then **Overview**, **Compare**, **Checks** and **Sources** tabs. Every fact carries small numbered links to the pages it came from.
-
-<p align="center"><img src="media/phone-screens.png" alt="AskWise phone screens" width="900"></p>
-
-### How AskWise labels information
+Every fact carries a label and numbered links to its sources.
 
 | Label | Meaning |
 |---|---|
-| Confirmed | A reliable source supports this |
-| Backed by several sources | More than one independent source supports this |
-| Sources disagree | Reliable sources say different things |
-| Not confirmed yet | There is not enough evidence |
+| Confirmed | A reliable source supports it |
+| Backed by several sources | More than one independent source supports it |
+| Sources disagree | Reliable sources say different things, and the report shows both |
+| Not confirmed yet | There isn't enough evidence |
 | May be out of date | The information is old |
 | Our conclusion | AskWise worked this out from the facts it found |
 
-### Prices
-
-Each price shows the amount, currency, country, shop, type (regular, sale, used or estimate), its source and the time it was checked. If AskWise cannot confirm a price from a real page, it says: *Check the shop for today's price.*
-
-## Examples
-
-**Product comparison**
-> Compare the MacBook Air M4 13-inch, Dell XPS 13 9350 and ASUS Zenbook 14 OLED for programming, school work and battery life. My budget is $1,100.
-
-AskWise identifies the exact models and variants, compares specs side by side, finds shop prices with the time checked, flags anything over budget and recommends the best match with its main drawback.
-
-**General research**
-> Explain the current state of passkeys for everyday users.
-
-AskWise gives a short explanation, the key facts with their sources, where sources disagree and what is still unclear.
+A price is shown only when a real shop page has it, with the amount, currency, country, shop and the time it was checked. Otherwise the report says: *Check the shop for today's price.*
 
 ## Notion
 
-AskWise connects to Notion so your research lives where your work does.
+Notion is optional. Without it you can still save any report to our public [AskWise shared reports](https://smooth-town-628.notion.site/AskWise-shared-reports-424669a3d1fd811fad46f66d0c26cfd6) page, which anyone can open without a Notion account. The save screen tells you it's public before anything is written.
 
-- **Connect in one tap.** "Connect Notion" opens Notion's own sign-in, where you pick the pages AskWise may use. Nothing to copy or paste.
-- **Read a page you choose.** For example, a page with your budget, your country and the features you care about. AskWise reads only that page, and treats it as information, never as instructions.
-- **Save reports you approve.** You see the destination and the exact content first. AskWise creates one new page only after you tick "I've read it" and press Save. Saving again never makes a copy.
-- **Or share without connecting.** Anyone can save a report to the public *AskWise shared reports* page. The preview says clearly that anyone with the link can read it.
-- **You stay in control.** AskWise only sees pages you choose in Notion, your Notion access is stored encrypted, and you can disconnect at any time.
+To use your own Notion:
 
-## Why glasses
+1. In AskWise, open **Settings** and tap **Connect Notion**.
+2. Notion asks which pages AskWise may use. Tick the pages you want and tap **Allow access**.
+3. Back in AskWise, choose the page it should read and the page where saved reports go.
+4. When you ask a question, tick **Use "your page"** under the question box.
 
-The answer you need is short: which one, why, and what to watch out for. On G2 it sits in your line of sight while you are in a shop, in a meeting or on the move. The phone holds the detail for when you want to dig in.
+There's nothing to set up in Notion first. If you want AskWise to know your budget, your country or what matters to you, write it on any page and choose that page. In our test the question never mentioned a budget, and the answer still said "around $1,100", because AskWise read it from the notes.
 
-## How it is built
+AskWise saves a report only after you've seen exactly what will be written and approved it. Approving twice still gives you one page. You can disconnect at any time in Settings.
 
-```
-G2 glasses  ─┐                                  ┌─ OpenAI (web search)
-             ├─ AskWise web app ── AskWise service ┤
-Phone page  ─┘   (Even Hub SDK)     (Node, SQLite) └─ Notion
-```
+## Privacy
 
-| Part | What it does | Where |
-|---|---|---|
-| Glasses screens | Short screens, gestures, live progress | `web/src/glasses` |
-| Phone pages | Ask, report, save approval, history, settings | `web/src/phone` |
-| Research engine | Plan, search, structure, check, write | `server/research` |
-| Checking step | Enforces the source rules on every report | `server/research/verify.ts` |
-| Notion | Connection, page reading, approved saving | `server/notion` |
-| Shared wording | Every label and message people see | `shared/labels.ts` |
+- No account or personal details are needed.
+- Your question is sent for research only when you press Research or tap a voice draft.
+- The microphone listens only while you hold the touchpad. Recordings become text and aren't kept.
+- AskWise reads only the Notion page you choose, and your Notion access is stored encrypted.
+- Nothing goes to Notion until you approve it.
+- Each device's research is private to that device, and you can delete everything from Settings.
+- AskWise doesn't buy anything, send messages or change your accounts.
 
-**Research steps.** AskWise plans the question, searches the web with OpenAI's web search tool, turns the findings into a structured report under a strict format, then checks it: any source the search did not actually return is removed, unsupported facts become "Not confirmed yet", and prices without a real shop page are removed. Research runs on the service, so it keeps going if the glasses app is closed, and the glasses pick it up again when reopened.
+## Built with
 
-**Saving safely.** Each save preview has a fingerprint of its exact content and destination. Approval only goes through if the content and destination are unchanged, and a repeated approval returns the page that already exists.
+| Part | Built with |
+|---|---|
+| Glasses app | [Even Hub SDK](https://github.com/even-realities/evenhub-templates) and [`@evenrealities/pretext`](https://www.npmjs.com/package/@evenrealities/pretext) |
+| Research | OpenAI Responses API with live web search |
+| Notes and saved reports | Notion API, with a sign-in for each person's own workspace |
+| Voice | OpenAI speech to text |
+| Phone pages and service | TypeScript, [Vite](https://vite.dev), [Hono](https://hono.dev) and Postgres |
 
-## Privacy and security
+## Run it yourself
 
-- No account or personal details are needed. Each device has its own private space.
-- Your questions are sent for research only when you press Research or tap a voice draft.
-- The microphone is used only while you hold the touchpad. Recordings are turned into text and not kept.
-- Notion pages are read only if you choose one, and only that page.
-- Nothing is saved to Notion until you approve the exact content.
-- API keys live only on the AskWise service. The glasses and phone never see them.
-- Each person's research is private to their account.
-- Activity records never contain keys, report text or page content.
-- You can delete everything AskWise holds about you from Settings.
-- Fair-use limits keep the service available for everyone: a few questions per device each hour, and a daily total.
+<details>
+<summary><strong>Set up and run AskWise locally</strong></summary>
 
-AskWise does not buy anything, send messages or change accounts.
-
-## Setup
-
-Requirements: Node.js 22.13 or newer.
+You need Node.js 22.13 or newer.
 
 ```bash
 npm install
 cp .env.example .env      # then fill in the values below
 npm run build
-npm start                 # serves the app and the service on http://localhost:8787
+npm start                 # the app and the service on http://localhost:8787
 ```
 
-Open http://localhost:8787 and ask. To use the service's own Notion connection from your device, run `npm run invite -- --owner` and open the address it prints.
+Open http://localhost:8787 and ask a question.
 
-### Environment variables
-
-| Name | Purpose |
+| Variable | What it's for |
 |---|---|
-| `OPENAI_API_KEY` | Research with OpenAI web search |
-| `NOTION_TOKEN` | The service's Notion connection, used for the shared page and the owner's pages |
-| `NOTION_SHARED_PAGE_ID` | Notion page anyone can save reports to |
-| `NOTION_SHARED_PAGE_URL` | Public link to that page (Notion: Share → Publish) |
-| `NOTION_OAUTH_CLIENT_ID` | Public Notion connection, for "Connect Notion" |
-| `NOTION_OAUTH_CLIENT_SECRET` | Its secret |
+| `OPENAI_API_KEY` | Research with OpenAI web search, and voice |
+| `NOTION_TOKEN` | AskWise's own Notion connection, for the shared page |
+| `NOTION_SHARED_PAGE_ID`, `NOTION_SHARED_PAGE_URL` | The public page anyone can save to, and its link |
+| `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET` | The "Connect Notion" sign-in |
 | `NOTION_OAUTH_REDIRECT_URI` | `https://<your-address>/api/integrations/notion/callback` |
-| `ASKWISE_SECRET` | Key for encrypting stored Notion access (created automatically if not set) |
-| `ASKWISE_RESEARCH_PER_HOUR` | Questions per device per hour (default 10) |
-| `ASKWISE_RESEARCH_PER_DAY` | Questions per day in total (default 150) |
-| `PORT` | Port for the app (default 8787) |
-| `ASKWISE_RESEARCH_MODEL` | Model for search and reports (default `gpt-5.4-nano`) |
-| `ASKWISE_PLANNER_MODEL` | Model for planning (default `gpt-5.4-mini`) |
-| `ASKWISE_TRANSCRIBE_MODEL` | Model that turns speech into text (default `gpt-4o-mini-transcribe`) |
-| `DATABASE_URL` | Postgres address for hosting (without it, AskWise uses a local SQLite file) |
-| `ASKWISE_DATA_DIR` | Where AskWise keeps its local database (default `./data`) |
+| `ASKWISE_SECRET` | Key that encrypts stored Notion access |
+| `DATABASE_URL` | Postgres address (without it, AskWise uses a local SQLite file) |
+| `ASKWISE_RESEARCH_PER_HOUR`, `ASKWISE_RESEARCH_PER_DAY` | Fair-use limits: 10 per device each hour and 150 a day by default |
 
-Behind an HTTPS proxy, start the service with `NODE_USE_ENV_PROXY=1`.
+</details>
 
-### Set up Notion
+<details>
+<summary><strong>Set up Notion for your own copy</strong></summary>
 
-**Shared page (for everyone):**
-1. In Notion's developer settings, create a connection with an API token. Give it **Read content** and **Insert content** only, and **No user information**. Put its token in `NOTION_TOKEN`.
-2. Create a page for shared reports, add your connection to it (**⋯ → Connections**), and publish it (**Share → Publish**). Put its ID and public link in `NOTION_SHARED_PAGE_ID` and `NOTION_SHARED_PAGE_URL`.
+1. In Notion's developer settings, create a connection with an API token, give it **Read content** and **Insert content**, and put its token in `NOTION_TOKEN`.
+2. Create a page for shared reports, add the connection to it (**⋯ → Connections**), publish it (**Share → Publish**), and set `NOTION_SHARED_PAGE_ID` and `NOTION_SHARED_PAGE_URL`.
+3. For "Connect Notion", create a second connection with **OAuth**, the same capabilities and the redirect address above, then put its client ID and secret in the environment.
 
-**Connect Notion (each person's own workspace):**
-1. Create a second connection with **OAuth** as the authentication method and the same capabilities.
-2. Set its redirect address to `https://<your-address>/api/integrations/notion/callback`.
-3. Put its client ID and secret in `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET`, and the redirect address in `NOTION_OAUTH_REDIRECT_URI`.
+</details>
 
-### Deploy to Railway
-
-1. Create a project with a PostgreSQL database and a service from this repository.
-2. Set `DATABASE_URL` to the database's address, plus `ASKWISE_SECRET`, `OPENAI_API_KEY`, `NOTION_TOKEN` and the other variables above.
-3. Railway runs `npm run build` and starts the app with `npm start`.
-
-### Deploy to Vercel
-
-AskWise deploys as one Vercel project: the app is served as static files and the service runs as a function (up to 5 minutes per request, enough for research).
-
-1. Create a Postgres database (for example Neon from the Vercel Marketplace) and set `DATABASE_URL`.
-2. Set `ASKWISE_SECRET` to a long random value, plus `OPENAI_API_KEY`, `NOTION_TOKEN` and the other variables above.
-3. Import the repository in Vercel. `vercel.json` runs `npm run build:vercel`, which writes the Build Output (`.vercel/output`).
-
-### Run on the glasses
+<details>
+<summary><strong>Glasses, simulator and packaging</strong></summary>
 
 ```bash
-npm start
-npx evenhub qr --url http://<your-computer-ip>:8787
+npx evenhub qr --url http://<your-computer-ip>:8787      # open it on G2
+npx evenhub-simulator http://localhost:8787              # the official simulator
+npm run pack                                             # package for Even Hub
 ```
 
-Scan the code with the Even Realities app on a phone paired with your G2.
+</details>
 
-### Run in the simulator
-
-```bash
-npm start
-npx evenhub-simulator http://localhost:8787
-```
-
-The simulator shows the phone page and the glasses display side by side.
-
-### Package for Even Hub
-
-```bash
-npm run pack
-```
-
-## Tests
+<details>
+<summary><strong>Tests</strong></summary>
 
 ```bash
 npm test
 ```
 
-Set `TEST_DATABASE_URL` to a Postgres address to run the service tests against Postgres as well. The tests cover the source rules (no invented sources, prices or specs), the label rules, research progress, repeated and stopped requests, the time limit, follow-up questions, privacy between accounts, Notion page access, save approval, duplicate prevention, revoked access, key handling and the wording people see. `scripts/simulator-run.mjs`, `scripts/simulator-checks.mjs` and `scripts/simulator-voice.mjs` drive the full flow, the harder moments and voice questions in the official simulator.
+The tests cover the source rules (no invented sources, prices or specifications), the labels, research progress, stopped and repeated requests, follow-ups, Check again, privacy between people, Notion access, approval before saving, duplicate protection and the wording people see. Set `TEST_DATABASE_URL` to also run them against Postgres. The scripts in `scripts/` drive the full flow and voice questions in the official simulator.
 
-## Demo
-
-[Watch the demo](media/askwise-demo.mp4): a real question typed on the phone, live research, the answer on the glasses, the full report and an approved save to Notion.
+</details>
 
 ## Project history
 
-AskWise started on November 23, 2026. Everything in this repository was written from that date. It builds on these open-source projects and tools:
+AskWise started on November 23, 2026, and everything in this repository was written from that date. It builds on the open-source projects listed under [Built with](#built-with), plus [TypeScript](https://www.typescriptlang.org), [Vitest](https://vitest.dev), [tsx](https://tsx.is) and the Geist typefaces.
 
-- [Even Hub SDK, CLI, simulator and templates](https://github.com/even-realities/evenhub-templates) by Even Realities
-- [`@evenrealities/pretext`](https://www.npmjs.com/package/@evenrealities/pretext) for text measuring on the glasses
-- [Hono](https://hono.dev) and `@hono/node-server`
-- [Vite](https://vite.dev), [TypeScript](https://www.typescriptlang.org), [Vitest](https://vitest.dev), [tsx](https://tsx.is)
-- [Geist and Geist Mono](https://vercel.com/font) typefaces via Fontsource
-- Node.js built-in SQLite
-- OpenAI Responses API with web search, and the Notion API
-
-## Team
-
-Built by [datwebguy](https://github.com/Datwebguy).
+Made by [datwebguy](https://github.com/Datwebguy).
