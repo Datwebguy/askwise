@@ -8,7 +8,7 @@
 A research assistant for Even Realities G2 glasses.
 
 [![Try it live](https://img.shields.io/badge/Try_it_live-askwise.up.railway.app-2f6bff?style=for-the-badge)](https://askwise.up.railway.app)
-[![Watch the demo](https://img.shields.io/badge/Watch_the_demo-2%C2%BD_min-13b5d6?style=for-the-badge)](media/askwise-demo.mp4)
+[![Watch the demo](https://img.shields.io/badge/Watch_the_demo-2%C2%BD_min-13b5d6?style=for-the-badge)](https://youtu.be/LUy_6LFMbKM)
 
 [What it does](#what-askwise-does) · [Use it](#use-askwise-in-two-minutes) · [Notion](#notion) · [Privacy](#privacy) · [Run it yourself](#run-it-yourself)
 
