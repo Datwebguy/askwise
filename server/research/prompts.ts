@@ -37,7 +37,7 @@ Rules:
 - Reviews: say whether each is an expert review, a lab test, customer reviews or an online discussion.
 - Prices: give the amount, currency, country, shop and whether it is a regular, sale, used or estimated price. Only report prices shown on a page you found. If you cannot find a current price, say so.
 - Give publication dates when available and point out information that may be out of date.
-- Software, apps and online services: find each plan and its price per user and month, the free plan and its limits, supported devices and platforms, main integrations, known limitations, and what users say about ease of use. Prefer the vendor's own pricing and documentation pages.
+- Software, apps and online services: find each plan and its price per user and month, the free plan and its limits, supported devices and platforms, main integrations, what each tool cannot do, and what users say about ease of use. Prefer the vendor's own pricing and documentation pages.
 - Point out where sources disagree and what is missing.
 - Keep facts separate from your own conclusions, and label conclusions as conclusions.
 ${SAFETY_RULES}`
