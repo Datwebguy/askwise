@@ -18,7 +18,7 @@ export interface VerifyContext {
   citedIds?: number[]
 }
 
-const LIMITS = { answer: 90, bestOption: 40, reason: 110, drawback: 110, alternative: 40 }
+const LIMITS = { answer: 140, bestOption: 40, reason: 110, drawback: 110, alternative: 40 }
 
 /** Plain text for the glasses: no markdown, no emoji or symbols outside the basic planes, single spaces. */
 export function glassesText(text: string | null | undefined, max: number): string {
@@ -30,6 +30,10 @@ export function glassesText(text: string | null | undefined, max: number): strin
     .replace(/\s+/g, ' ')
     .trim()
   if (clean.length <= max) return clean
+  // Prefer ending at a full clause so the lens never shows half a thought.
+  const window = clean.slice(0, max)
+  const clause = Math.max(window.lastIndexOf('. '), window.lastIndexOf('; '), window.lastIndexOf('! '), window.lastIndexOf('? '))
+  if (clause > max * 0.4) return `${window.slice(0, clause).replace(/[\s,;:-]+$/, '')}.`
   const cut = clean.slice(0, max - 1)
   const lastSpace = cut.lastIndexOf(' ')
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.-]+$/, '')}…`

@@ -130,6 +130,7 @@ describe('checking step: recommendations and review flags', () => {
 
 describe('glasses text', () => {
   it('removes markdown, emoji and extra spaces, and fits the limit', () => {
+    expect(glassesText('Bose suits travel and calls; Sony handles wind better for outdoor calls and long trips abroad', 60)).toBe('Bose suits travel and calls.')
     const t = glassesText('**Best** pick 🚀 is [A](https://x.example)   because   reasons and more reasons', 30)
     expect(t).not.toMatch(/[*[\]🚀]/u)
     expect(t.length).toBeLessThanOrEqual(30)
